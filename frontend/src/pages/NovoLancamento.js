@@ -178,78 +178,75 @@ function NovoLancamento() {
           </div>
 
           {lancamento.itens.map((item, index) => (
-            <div key={index} style={{display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr 36px', gap: '10px', alignItems: 'end', background: '#f8fafc', padding: '12px', borderRadius: '8px', marginBottom: '10px', border: '1px solid #e2e8f0'}}>
-              <div className="form-group" style={{marginBottom: '0'}}>
-                <label style={{fontSize: '12px', marginBottom: '4px'}}>Formato</label>
-                <select
-                  className="form-control"
-                  value={item.formato}
-                  onChange={(e) => atualizarItem(index, 'formato', e.target.value)}
-                  required
-                  style={{fontSize: '12px', padding: '8px'}}
-                >
-                  <option value="">Selecione</option>
-                  {variaveis.formatos.map((f) => (
-                    <option key={f.id} value={f.nome}>{f.nome}</option>
-                  ))}
-                </select>
-              </div>
+            <div key={index} className="item-producao-row" style={{background: '#f8fafc', padding: '12px', borderRadius: '8px', marginBottom: '10px', border: '1px solid #e2e8f0'}}>
+              <div className="item-producao-grid">
+                <div className="form-group" style={{marginBottom: '0'}}>
+                  <label className="item-label">Formato</label>
+                  <select
+                    className="form-control item-input"
+                    value={item.formato}
+                    onChange={(e) => atualizarItem(index, 'formato', e.target.value)}
+                    required
+                  >
+                    <option value="">Selecione</option>
+                    {variaveis.formatos.map((f) => (
+                      <option key={f.id} value={f.nome}>{f.nome}</option>
+                    ))}
+                  </select>
+                </div>
 
-              <div className="form-group" style={{marginBottom: '0'}}>
-                <label style={{fontSize: '12px', marginBottom: '4px'}}>Cor</label>
-                <select
-                  className="form-control"
-                  value={item.cor}
-                  onChange={(e) => atualizarItem(index, 'cor', e.target.value)}
-                  required
-                  style={{fontSize: '12px', padding: '8px'}}
-                >
-                  <option value="">Selecione</option>
-                  {variaveis.cores.map((c) => (
-                    <option key={c.id} value={c.nome}>{c.nome}</option>
-                  ))}
-                </select>
-              </div>
+                <div className="form-group" style={{marginBottom: '0'}}>
+                  <label className="item-label">Cor</label>
+                  <select
+                    className="form-control item-input"
+                    value={item.cor}
+                    onChange={(e) => atualizarItem(index, 'cor', e.target.value)}
+                    required
+                  >
+                    <option value="">Selecione</option>
+                    {variaveis.cores.map((c) => (
+                      <option key={c.id} value={c.nome}>{c.nome}</option>
+                    ))}
+                  </select>
+                </div>
 
-              <div className="form-group" style={{marginBottom: '0'}}>
-                <label style={{fontSize: '12px', marginBottom: '4px'}}>Pacote (kg)</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  className="form-control"
-                  value={item.pacote_kg}
-                  onChange={(e) => atualizarItem(index, 'pacote_kg', e.target.value)}
-                  required
-                  placeholder="0,00"
-                  style={{fontSize: '12px', padding: '8px'}}
-                />
-              </div>
+                <div className="form-group" style={{marginBottom: '0'}}>
+                  <label className="item-label">Pacote (kg)</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    className="form-control item-input"
+                    value={item.pacote_kg}
+                    onChange={(e) => atualizarItem(index, 'pacote_kg', e.target.value)}
+                    required
+                    placeholder="0,00"
+                  />
+                </div>
 
-              <div className="form-group" style={{marginBottom: '0'}}>
-                <label style={{fontSize: '12px', marginBottom: '4px'}}>Produção (kg)</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  className="form-control"
-                  value={item.producao_kg}
-                  onChange={(e) => atualizarItem(index, 'producao_kg', e.target.value)}
-                  required
-                  placeholder="0,00"
-                  style={{fontSize: '12px', padding: '8px'}}
-                />
-              </div>
+                <div className="form-group" style={{marginBottom: '0'}}>
+                  <label className="item-label">Produção (kg)</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    className="form-control item-input"
+                    value={item.producao_kg}
+                    onChange={(e) => atualizarItem(index, 'producao_kg', e.target.value)}
+                    required
+                    placeholder="0,00"
+                  />
+                </div>
 
-              {lancamento.itens.length > 1 && (
-                <button
-                  type="button"
-                  className="btn btn-danger"
-                  onClick={() => removerItem(index)}
-                  style={{padding: '8px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', minWidth: '36px'}}
-                  title="Remover item"
-                >
-                  <Trash2 size={14} />
-                </button>
-              )}
+                {lancamento.itens.length > 1 && (
+                  <button
+                    type="button"
+                    className="btn btn-danger item-delete-btn"
+                    onClick={() => removerItem(index)}
+                    title="Remover item"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                )}
+              </div>
             </div>
           ))}
         </div>
