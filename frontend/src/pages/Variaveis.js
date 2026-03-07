@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
-import { Plus, Trash2, Settings, RefreshCw, ArrowUp, ArrowDown } from 'lucide-react';
+import { Plus, Trash2, Settings, RefreshCw, GripVertical } from 'lucide-react';
 
 const API_URL = (process.env.REACT_APP_BACKEND_URL || '') + '/api';
 
@@ -9,6 +9,12 @@ function Variaveis() {
   const [loading, setLoading] = useState(true);
   const [novaVariavel, setNovaVariavel] = useState({ tipo: 'turno', nome: '' });
   const [salvando, setSalvando] = useState(false);
+  const [draggedItem, setDraggedItem] = useState(null);
+  const [dragOverItem, setDragOverItem] = useState(null);
+  
+  // Refs para touch events
+  const touchStartY = useRef(0);
+  const currentTouchItem = useRef(null);
 
   useEffect(() => {
     carregarVariaveis();
@@ -62,21 +68,8 @@ function Variaveis() {
     }
   };
 
-  // Função para mover item para cima ou para baixo
-  const moverVariavel = async (tipo, index, direcao) => {
-    const listaAtual = ordenarPorOrdem(variaveis.filter(v => v.tipo === tipo));
-    const novoIndex = index + direcao;
-    
-    // Verificar limites
-    if (novoIndex < 0 || novoIndex >= listaAtual.length) return;
-    
-    // Trocar posições
-    const novaLista = [...listaAtual];
-    const temp = novaLista[index];
-    novaLista[index] = novaLista[novoIndex];
-    novaLista[novoIndex] = temp;
-    
-    // Atualizar ordem no backend
+  // Salvar nova ordem no backend
+  const salvarOrdem = async (novaLista) => {
     try {
       const ordemAtualizada = novaLista.map((item, idx) => ({
         id: item.id,
@@ -90,6 +83,99 @@ function Variaveis() {
     }
   };
 
+  // ============ DRAG AND DROP (Desktop) ============
+  const handleDragStart = (e, item, tipo) => {
+    setDraggedItem({ ...item, tipo });
+    e.dataTransfer.effectAllowed = 'move';
+    e.target.style.opacity = '0.5';
+  };
+
+  const handleDragEnd = (e) => {
+    e.target.style.opacity = '1';
+    setDraggedItem(null);
+    setDragOverItem(null);
+  };
+
+  const handleDragOver = (e, item, tipo) => {
+    e.preventDefault();
+    if (draggedItem && draggedItem.tipo === tipo && draggedItem.id !== item.id) {
+      setDragOverItem(item.id);
+    }
+  };
+
+  const handleDragLeave = () => {
+    setDragOverItem(null);
+  };
+
+  const handleDrop = async (e, targetItem, tipo) => {
+    e.preventDefault();
+    
+    if (!draggedItem || draggedItem.tipo !== tipo) return;
+    
+    const lista = ordenarPorOrdem(variaveis.filter(v => v.tipo === tipo));
+    const dragIndex = lista.findIndex(item => item.id === draggedItem.id);
+    const dropIndex = lista.findIndex(item => item.id === targetItem.id);
+    
+    if (dragIndex === dropIndex) return;
+    
+    // Reordenar lista
+    const novaLista = [...lista];
+    const [removed] = novaLista.splice(dragIndex, 1);
+    novaLista.splice(dropIndex, 0, removed);
+    
+    await salvarOrdem(novaLista);
+    
+    setDraggedItem(null);
+    setDragOverItem(null);
+  };
+
+  // ============ TOUCH EVENTS (Mobile) ============
+  const handleTouchStart = (e, item, tipo, index) => {
+    touchStartY.current = e.touches[0].clientY;
+    currentTouchItem.current = { item, tipo, index };
+    setDraggedItem({ ...item, tipo });
+  };
+
+  const handleTouchMove = (e, lista) => {
+    if (!currentTouchItem.current) return;
+    
+    const touch = e.touches[0];
+    const elementos = document.querySelectorAll(`[data-tipo="${currentTouchItem.current.tipo}"]`);
+    
+    elementos.forEach((el, idx) => {
+      const rect = el.getBoundingClientRect();
+      if (touch.clientY >= rect.top && touch.clientY <= rect.bottom) {
+        if (lista[idx] && lista[idx].id !== currentTouchItem.current.item.id) {
+          setDragOverItem(lista[idx].id);
+        }
+      }
+    });
+  };
+
+  const handleTouchEnd = async (e, lista, tipo) => {
+    if (!currentTouchItem.current || !dragOverItem) {
+      setDraggedItem(null);
+      setDragOverItem(null);
+      currentTouchItem.current = null;
+      return;
+    }
+    
+    const dragIndex = lista.findIndex(item => item.id === currentTouchItem.current.item.id);
+    const dropIndex = lista.findIndex(item => item.id === dragOverItem);
+    
+    if (dragIndex !== -1 && dropIndex !== -1 && dragIndex !== dropIndex) {
+      const novaLista = [...lista];
+      const [removed] = novaLista.splice(dragIndex, 1);
+      novaLista.splice(dropIndex, 0, removed);
+      
+      await salvarOrdem(novaLista);
+    }
+    
+    setDraggedItem(null);
+    setDragOverItem(null);
+    currentTouchItem.current = null;
+  };
+
   // Ordenar por campo 'ordem' se existir
   const ordenarPorOrdem = (lista) => {
     return [...lista].sort((a, b) => (a.ordem ?? 999) - (b.ordem ?? 999));
@@ -99,7 +185,7 @@ function Variaveis() {
   const formatos = ordenarPorOrdem(variaveis.filter(v => v.tipo === 'formato'));
   const cores = ordenarPorOrdem(variaveis.filter(v => v.tipo === 'cor'));
 
-  // Componente para renderizar lista de variáveis com botões de mover
+  // Componente para renderizar lista de variáveis com drag and drop
   const ListaVariaveis = ({ lista, tipo, icone, corFundo }) => (
     <div className="card">
       <h2 style={{marginBottom: '15px', display: 'flex', alignItems: 'center', gap: '10px'}}>
@@ -114,72 +200,69 @@ function Variaveis() {
       ) : (
         <div style={{display: 'flex', flexDirection: 'column', gap: '8px'}}>
           {lista.map((v, index) => (
-            <div key={v.id} style={{
-              display: 'flex', 
-              alignItems: 'center', 
-              padding: '8px 12px', 
-              background: '#f8fafc', 
-              borderRadius: '8px', 
-              border: '1px solid #e2e8f0',
-              gap: '8px'
-            }}>
-              {/* Botões de mover */}
-              <div style={{display: 'flex', flexDirection: 'column', gap: '2px'}}>
-                <button
-                  onClick={() => moverVariavel(tipo, index, -1)}
-                  disabled={index === 0}
-                  style={{
-                    padding: '4px 6px',
-                    border: 'none',
-                    background: index === 0 ? '#e2e8f0' : '#15803d',
-                    color: index === 0 ? '#94a3b8' : 'white',
-                    borderRadius: '4px',
-                    cursor: index === 0 ? 'not-allowed' : 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontSize: '10px'
-                  }}
-                  title="Mover para cima"
-                >
-                  <ArrowUp size={14} />
-                </button>
-                <button
-                  onClick={() => moverVariavel(tipo, index, 1)}
-                  disabled={index === lista.length - 1}
-                  style={{
-                    padding: '4px 6px',
-                    border: 'none',
-                    background: index === lista.length - 1 ? '#e2e8f0' : '#15803d',
-                    color: index === lista.length - 1 ? '#94a3b8' : 'white',
-                    borderRadius: '4px',
-                    cursor: index === lista.length - 1 ? 'not-allowed' : 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontSize: '10px'
-                  }}
-                  title="Mover para baixo"
-                >
-                  <ArrowDown size={14} />
-                </button>
+            <div 
+              key={v.id}
+              data-tipo={tipo}
+              draggable
+              onDragStart={(e) => handleDragStart(e, v, tipo)}
+              onDragEnd={handleDragEnd}
+              onDragOver={(e) => handleDragOver(e, v, tipo)}
+              onDragLeave={handleDragLeave}
+              onDrop={(e) => handleDrop(e, v, tipo)}
+              onTouchStart={(e) => handleTouchStart(e, v, tipo, index)}
+              onTouchMove={(e) => handleTouchMove(e, lista)}
+              onTouchEnd={(e) => handleTouchEnd(e, lista, tipo)}
+              style={{
+                display: 'flex', 
+                justifyContent: 'space-between', 
+                alignItems: 'center', 
+                padding: '12px', 
+                background: dragOverItem === v.id ? '#dcfce7' : (draggedItem?.id === v.id ? '#e2e8f0' : '#f8fafc'), 
+                borderRadius: '8px', 
+                border: dragOverItem === v.id ? '2px dashed #15803d' : '1px solid #e2e8f0',
+                cursor: 'grab',
+                transition: 'all 0.15s ease',
+                touchAction: 'none',
+                userSelect: 'none'
+              }}
+            >
+              {/* Ícone de arrastar */}
+              <div style={{
+                display: 'flex', 
+                alignItems: 'center', 
+                color: '#94a3b8',
+                marginRight: '12px',
+                cursor: 'grab',
+                padding: '4px'
+              }}>
+                <GripVertical size={20} />
               </div>
               
               {/* Nome da variável */}
-              <span style={{fontWeight: '500', flex: 1}}>{v.nome}</span>
+              <span style={{fontWeight: '500', flex: 1, fontSize: '15px'}}>{v.nome}</span>
               
               {/* Botão de excluir */}
               <button
-                onClick={() => deletarVariavel(v.id, v.nome)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  e.preventDefault();
+                  deletarVariavel(v.id, v.nome);
+                }}
+                onTouchEnd={(e) => {
+                  e.stopPropagation();
+                }}
                 className="btn btn-danger"
-                style={{padding: '6px 10px', fontSize: '12px'}}
+                style={{padding: '8px 12px', fontSize: '12px', touchAction: 'manipulation'}}
               >
-                <Trash2 size={14} />
+                <Trash2 size={16} />
               </button>
             </div>
           ))}
         </div>
       )}
+      <p style={{fontSize: '12px', color: '#94a3b8', marginTop: '12px', textAlign: 'center'}}>
+        ☰ Arraste para reordenar
+      </p>
     </div>
   );
 
