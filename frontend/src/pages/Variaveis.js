@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Plus, Trash2, Settings, RefreshCw } from 'lucide-react';
+import { Plus, Trash2, Settings, RefreshCw, ChevronUp, ChevronDown } from 'lucide-react';
 
 const API_URL = (process.env.REACT_APP_BACKEND_URL || '') + '/api';
 
@@ -62,15 +62,123 @@ function Variaveis() {
     }
   };
 
-  const turnos = variaveis.filter(v => v.tipo === 'turno');
-  const formatos = variaveis.filter(v => v.tipo === 'formato');
-  const cores = variaveis.filter(v => v.tipo === 'cor');
-
-  const tipoLabels = {
-    turno: 'Turno',
-    formato: 'Formato',
-    cor: 'Cor'
+  // Função para mover item para cima ou para baixo
+  const moverVariavel = async (tipo, index, direcao) => {
+    const listaAtual = variaveis.filter(v => v.tipo === tipo);
+    const novoIndex = index + direcao;
+    
+    // Verificar limites
+    if (novoIndex < 0 || novoIndex >= listaAtual.length) return;
+    
+    // Trocar posições
+    const novaLista = [...listaAtual];
+    const temp = novaLista[index];
+    novaLista[index] = novaLista[novoIndex];
+    novaLista[novoIndex] = temp;
+    
+    // Atualizar ordem no backend
+    try {
+      const ordemAtualizada = novaLista.map((item, idx) => ({
+        id: item.id,
+        ordem: idx
+      }));
+      
+      await axios.put(`${API_URL}/variaveis/ordem`, { variaveis: ordemAtualizada });
+      carregarVariaveis();
+    } catch (error) {
+      console.error('Erro ao reordenar variáveis:', error);
+      // Atualizar localmente mesmo se falhar no backend
+      const novasVariaveis = variaveis.map(v => {
+        if (v.tipo !== tipo) return v;
+        const idx = novaLista.findIndex(n => n.id === v.id);
+        return { ...v, ordem: idx };
+      });
+      setVariaveis(novasVariaveis);
+    }
   };
+
+  // Ordenar por campo 'ordem' se existir
+  const ordenarPorOrdem = (lista) => {
+    return [...lista].sort((a, b) => (a.ordem ?? 999) - (b.ordem ?? 999));
+  };
+
+  const turnos = ordenarPorOrdem(variaveis.filter(v => v.tipo === 'turno'));
+  const formatos = ordenarPorOrdem(variaveis.filter(v => v.tipo === 'formato'));
+  const cores = ordenarPorOrdem(variaveis.filter(v => v.tipo === 'cor'));
+
+  // Componente para renderizar lista de variáveis com botões de mover
+  const ListaVariaveis = ({ lista, tipo, icone, corFundo }) => (
+    <div className="card">
+      <h2 style={{marginBottom: '15px', display: 'flex', alignItems: 'center', gap: '10px'}}>
+        <span style={{background: corFundo, padding: '8px', borderRadius: '8px'}}>{icone}</span>
+        {tipo === 'turno' ? 'Turnos' : tipo === 'formato' ? 'Formatos' : 'Cores'}
+        <span style={{background: '#e2e8f0', padding: '2px 8px', borderRadius: '12px', fontSize: '12px', marginLeft: 'auto'}}>
+          {lista.length}
+        </span>
+      </h2>
+      {lista.length === 0 ? (
+        <p style={{color: '#64748b', fontSize: '14px'}}>Nenhum {tipo} cadastrado</p>
+      ) : (
+        <div style={{display: 'flex', flexDirection: 'column', gap: '8px'}}>
+          {lista.map((v, index) => (
+            <div key={v.id} style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0'}}>
+              {/* Botões de mover */}
+              <div style={{display: 'flex', gap: '4px', marginRight: '10px'}}>
+                <button
+                  onClick={() => moverVariavel(tipo, index, -1)}
+                  disabled={index === 0}
+                  style={{
+                    padding: '4px',
+                    border: 'none',
+                    background: index === 0 ? '#e2e8f0' : '#15803d',
+                    color: index === 0 ? '#94a3b8' : 'white',
+                    borderRadius: '4px',
+                    cursor: index === 0 ? 'not-allowed' : 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}
+                  title="Mover para cima"
+                >
+                  <ChevronUp size={16} />
+                </button>
+                <button
+                  onClick={() => moverVariavel(tipo, index, 1)}
+                  disabled={index === lista.length - 1}
+                  style={{
+                    padding: '4px',
+                    border: 'none',
+                    background: index === lista.length - 1 ? '#e2e8f0' : '#15803d',
+                    color: index === lista.length - 1 ? '#94a3b8' : 'white',
+                    borderRadius: '4px',
+                    cursor: index === lista.length - 1 ? 'not-allowed' : 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}
+                  title="Mover para baixo"
+                >
+                  <ChevronDown size={16} />
+                </button>
+              </div>
+              
+              {/* Nome da variável */}
+              <span style={{fontWeight: '500', flex: 1}}>{v.nome}</span>
+              
+              {/* Botão de excluir */}
+              <button
+                onClick={() => deletarVariavel(v.id, v.nome)}
+                className="btn btn-danger"
+                style={{padding: '6px 10px', fontSize: '12px'}}
+              >
+                <Trash2 size={14} />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
 
   return (
     <div>
@@ -125,92 +233,9 @@ function Variaveis() {
         <div className="loading">Carregando variáveis...</div>
       ) : (
         <div style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px'}}>
-          {/* Card de Turnos */}
-          <div className="card">
-            <h2 style={{marginBottom: '15px', display: 'flex', alignItems: 'center', gap: '10px'}}>
-              <span style={{background: '#dcfce7', padding: '8px', borderRadius: '8px'}}>🕐</span>
-              Turnos
-              <span style={{background: '#e2e8f0', padding: '2px 8px', borderRadius: '12px', fontSize: '12px', marginLeft: 'auto'}}>
-                {turnos.length}
-              </span>
-            </h2>
-            {turnos.length === 0 ? (
-              <p style={{color: '#64748b', fontSize: '14px'}}>Nenhum turno cadastrado</p>
-            ) : (
-              <div style={{display: 'flex', flexDirection: 'column', gap: '8px'}}>
-                {turnos.map((v) => (
-                  <div key={v.id} style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0'}}>
-                    <span style={{fontWeight: '500'}}>{v.nome}</span>
-                    <button
-                      onClick={() => deletarVariavel(v.id, v.nome)}
-                      className="btn btn-danger"
-                      style={{padding: '6px 10px', fontSize: '12px'}}
-                    >
-                      <Trash2 size={14} />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Card de Formatos */}
-          <div className="card">
-            <h2 style={{marginBottom: '15px', display: 'flex', alignItems: 'center', gap: '10px'}}>
-              <span style={{background: '#dbeafe', padding: '8px', borderRadius: '8px'}}>📐</span>
-              Formatos
-              <span style={{background: '#e2e8f0', padding: '2px 8px', borderRadius: '12px', fontSize: '12px', marginLeft: 'auto'}}>
-                {formatos.length}
-              </span>
-            </h2>
-            {formatos.length === 0 ? (
-              <p style={{color: '#64748b', fontSize: '14px'}}>Nenhum formato cadastrado</p>
-            ) : (
-              <div style={{display: 'flex', flexDirection: 'column', gap: '8px'}}>
-                {formatos.map((v) => (
-                  <div key={v.id} style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0'}}>
-                    <span style={{fontWeight: '500'}}>{v.nome}</span>
-                    <button
-                      onClick={() => deletarVariavel(v.id, v.nome)}
-                      className="btn btn-danger"
-                      style={{padding: '6px 10px', fontSize: '12px'}}
-                    >
-                      <Trash2 size={14} />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Card de Cores */}
-          <div className="card">
-            <h2 style={{marginBottom: '15px', display: 'flex', alignItems: 'center', gap: '10px'}}>
-              <span style={{background: '#fef3c7', padding: '8px', borderRadius: '8px'}}>🎨</span>
-              Cores
-              <span style={{background: '#e2e8f0', padding: '2px 8px', borderRadius: '12px', fontSize: '12px', marginLeft: 'auto'}}>
-                {cores.length}
-              </span>
-            </h2>
-            {cores.length === 0 ? (
-              <p style={{color: '#64748b', fontSize: '14px'}}>Nenhuma cor cadastrada</p>
-            ) : (
-              <div style={{display: 'flex', flexDirection: 'column', gap: '8px'}}>
-                {cores.map((v) => (
-                  <div key={v.id} style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0'}}>
-                    <span style={{fontWeight: '500'}}>{v.nome}</span>
-                    <button
-                      onClick={() => deletarVariavel(v.id, v.nome)}
-                      className="btn btn-danger"
-                      style={{padding: '6px 10px', fontSize: '12px'}}
-                    >
-                      <Trash2 size={14} />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+          <ListaVariaveis lista={turnos} tipo="turno" icone="🕐" corFundo="#dcfce7" />
+          <ListaVariaveis lista={formatos} tipo="formato" icone="📐" corFundo="#dbeafe" />
+          <ListaVariaveis lista={cores} tipo="cor" icone="🎨" corFundo="#fef3c7" />
         </div>
       )}
 

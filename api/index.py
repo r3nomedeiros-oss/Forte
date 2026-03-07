@@ -366,7 +366,7 @@ def deletar_usuario(user_id):
 @app.route('/api/variaveis', methods=['GET'])
 def listar_variaveis():
     try:
-        response = supabase.table("variaveis").select("*").order("tipo").order("nome").execute()
+        response = supabase.table("variaveis").select("*").order("tipo").order("ordem", nullsfirst=False).order("nome").execute()
         return jsonify(response.data)
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -396,6 +396,17 @@ def criar_variavel():
 def deletar_variavel(variavel_id):
     try:
         supabase.table("variaveis").delete().eq("id", variavel_id).execute()
+        return jsonify({"success": True})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/variaveis/ordem', methods=['PUT'])
+def atualizar_ordem_variaveis():
+    try:
+        data = request.get_json()
+        variaveis = data.get("variaveis", [])
+        for item in variaveis:
+            supabase.table("variaveis").update({"ordem": item["ordem"]}).eq("id", item["id"]).execute()
         return jsonify({"success": True})
     except Exception as e:
         return jsonify({"error": str(e)}), 500

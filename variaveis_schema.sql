@@ -5,6 +5,7 @@ CREATE TABLE IF NOT EXISTS variaveis (
     id TEXT PRIMARY KEY,
     tipo TEXT NOT NULL,  -- 'turno', 'formato', 'cor'
     nome TEXT NOT NULL,
+    ordem INTEGER DEFAULT 0,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     UNIQUE(tipo, nome)
 );
@@ -12,6 +13,7 @@ CREATE TABLE IF NOT EXISTS variaveis (
 -- Índices para melhor performance
 CREATE INDEX IF NOT EXISTS idx_variaveis_tipo ON variaveis(tipo);
 CREATE INDEX IF NOT EXISTS idx_variaveis_nome ON variaveis(nome);
+CREATE INDEX IF NOT EXISTS idx_variaveis_ordem ON variaveis(ordem);
 
 -- Habilitar Row Level Security
 ALTER TABLE variaveis ENABLE ROW LEVEL SECURITY;
@@ -20,14 +22,5 @@ ALTER TABLE variaveis ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Enable all access for variaveis" ON variaveis
     FOR ALL USING (true) WITH CHECK (true);
 
--- Inserir algumas variáveis padrão (opcional)
--- INSERT INTO variaveis (id, tipo, nome) VALUES 
---     (gen_random_uuid()::text, 'turno', 'Manhã'),
---     (gen_random_uuid()::text, 'turno', 'Tarde'),
---     (gen_random_uuid()::text, 'turno', 'Noite'),
---     (gen_random_uuid()::text, 'turno', 'Administrativo'),
---     (gen_random_uuid()::text, 'formato', '30x40'),
---     (gen_random_uuid()::text, 'formato', '40x50'),
---     (gen_random_uuid()::text, 'cor', 'Branco'),
---     (gen_random_uuid()::text, 'cor', 'Azul'),
---     (gen_random_uuid()::text, 'cor', 'Verde');
+-- Se a tabela já existe, adicionar coluna ordem:
+-- ALTER TABLE variaveis ADD COLUMN IF NOT EXISTS ordem INTEGER DEFAULT 0;

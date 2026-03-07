@@ -66,6 +66,7 @@ class Variable(BaseModel):
     tipo: str
     nome: str
     created_at: str
+    ordem: Optional[int] = None
 
 # Add your routes to the router instead of directly to app
 @api_router.get("/")
@@ -174,7 +175,7 @@ async def login_user(login_data: UserLogin):
 async def listar_variaveis():
     """List all variables (turnos, formatos, cores)"""
     try:
-        response = supabase.table("variaveis").select("*").order("tipo").order("nome").execute()
+        response = supabase.table("variaveis").select("*").order("tipo").order("ordem", nullsfirst=False).order("nome").execute()
         return response.data
     except Exception as e:
         logger.error(f"Error fetching variables: {e}")
@@ -214,6 +215,18 @@ async def deletar_variavel(variavel_id: str):
         return {"success": True}
     except Exception as e:
         logger.error(f"Error deleting variable: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.put("/variaveis/ordem")
+async def atualizar_ordem_variaveis(data: dict):
+    """Update the order of variables"""
+    try:
+        variaveis = data.get("variaveis", [])
+        for item in variaveis:
+            supabase.table("variaveis").update({"ordem": item["ordem"]}).eq("id", item["id"]).execute()
+        return {"success": True}
+    except Exception as e:
+        logger.error(f"Error updating variables order: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 # Include the router in the main app
