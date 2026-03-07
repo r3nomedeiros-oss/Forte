@@ -102,6 +102,11 @@ function Navigation({ user, onLogout }) {
           <span>Relatórios</span>
         </Link>
         
+        <Link to="/variaveis" className={`mobile-nav-item ${isActive('/variaveis')}`}>
+          <Settings size={18} />
+          <span>Variáveis</span>
+        </Link>
+        
         <button onClick={onLogout} className="mobile-nav-item" style={{background: 'none', border: 'none', color: 'rgba(255, 255, 255, 0.7)', cursor: 'pointer'}}>
           <LogOut size={18} />
           <span>Sair</span>
