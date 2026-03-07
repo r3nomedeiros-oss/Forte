@@ -46,16 +46,25 @@ function Dashboard() {
   };
 
   const prepararDadosGrafico = () => {
-    // Agrupar lançamentos por data e somar produção e perdas
+    // Criar array com os últimos 7 dias
+    const hoje = new Date();
     const dadosPorDia = {};
     
+    // Inicializar todos os 7 dias com valores zerados
+    for (let i = 6; i >= 0; i--) {
+      const data = new Date();
+      data.setDate(hoje.getDate() - i);
+      const dataFormatada = data.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+      dadosPorDia[dataFormatada] = { data: dataFormatada, producao: 0, perdas: 0 };
+    }
+    
+    // Preencher com dados reais dos lançamentos
     lancamentos.forEach(lanc => {
       const data = new Date(lanc.data + 'T00:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
-      if (!dadosPorDia[data]) {
-        dadosPorDia[data] = { data, producao: 0, perdas: 0 };
+      if (dadosPorDia[data]) {
+        dadosPorDia[data].producao += parseFloat(lanc.producao_total) || 0;
+        dadosPorDia[data].perdas += parseFloat(lanc.perdas_total) || 0;
       }
-      dadosPorDia[data].producao += parseFloat(lanc.producao_total) || 0;
-      dadosPorDia[data].perdas += parseFloat(lanc.perdas_total) || 0;
     });
     
     // Ordenar por data
@@ -66,6 +75,36 @@ function Dashboard() {
       const dataB = new Date(`2026-${mesB}-${diaB}`);
       return dataA - dataB;
     });
+  };
+
+  // Tooltip customizado para mostrar Produção primeiro
+  const CustomTooltip = ({ active, payload, label }) => {
+    if (active && payload && payload.length) {
+      // Ordenar para Produção aparecer primeiro
+      const sortedPayload = [...payload].sort((a, b) => {
+        if (a.dataKey === 'producao') return -1;
+        if (b.dataKey === 'producao') return 1;
+        return 0;
+      });
+      
+      return (
+        <div style={{
+          background: 'white',
+          padding: '10px 14px',
+          border: '1px solid #e2e8f0',
+          borderRadius: '8px',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+        }}>
+          <p style={{ margin: '0 0 8px 0', fontWeight: '600', color: '#1a202c' }}>{label}</p>
+          {sortedPayload.map((entry, index) => (
+            <p key={index} style={{ margin: '4px 0', color: entry.color, fontWeight: '500' }}>
+              {entry.name}: {formatarKg(entry.value)} kg
+            </p>
+          ))}
+        </div>
+      );
+    }
+    return null;
   };
 
   if (loading) {
@@ -126,7 +165,7 @@ function Dashboard() {
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="data" />
               <YAxis label={{ value: 'kg', angle: -90, position: 'insideLeft' }} />
-              <Tooltip />
+              <Tooltip content={<CustomTooltip />} />
               <Legend />
               <Line 
                 type="monotone" 
