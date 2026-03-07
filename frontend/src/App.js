@@ -102,6 +102,11 @@ function Navigation({ user, onLogout }) {
           <span>Relatórios</span>
         </Link>
         
+        <Link to="/usuarios" className={`mobile-nav-item ${isActive('/usuarios')}`}>
+          <Users size={18} />
+          <span>Usuários</span>
+        </Link>
+        
         <Link to="/variaveis" className={`mobile-nav-item ${isActive('/variaveis')}`}>
           <Settings size={18} />
           <span>Variáveis</span>

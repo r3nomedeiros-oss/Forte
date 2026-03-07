@@ -163,24 +163,26 @@ function Lancamentos() {
       </div>
 
       <div className="card" style={{marginBottom: '20px', padding: '15px'}}>
-        <div style={{display: 'flex', gap: '20px', alignItems: 'flex-end', flexWrap: 'wrap'}}>
-          <div className="form-group" style={{marginBottom: 0, flex: 1, minWidth: '200px'}}>
-            <label style={{fontSize: '13px', fontWeight: '600', marginBottom: '5px', display: 'block'}}>Data Início</label>
-            <input 
-              type="date" 
-              className="form-control" 
-              value={filtroDataInicio} 
-              onChange={(e) => setFiltroDataInicio(e.target.value)} 
-            />
-          </div>
-          <div className="form-group" style={{marginBottom: 0, flex: 1, minWidth: '200px'}}>
-            <label style={{fontSize: '13px', fontWeight: '600', marginBottom: '5px', display: 'block'}}>Data Fim</label>
-            <input 
-              type="date" 
-              className="form-control" 
-              value={filtroDataFim} 
-              onChange={(e) => setFiltroDataFim(e.target.value)} 
-            />
+        <div style={{display: 'flex', flexDirection: 'column', gap: '15px'}}>
+          <div style={{display: 'flex', gap: '20px', flexWrap: 'wrap'}}>
+            <div className="form-group" style={{marginBottom: 0, flex: 1, minWidth: '200px'}}>
+              <label style={{fontSize: '13px', fontWeight: '600', marginBottom: '5px', display: 'block'}}>Data Início</label>
+              <input 
+                type="date" 
+                className="form-control" 
+                value={filtroDataInicio} 
+                onChange={(e) => setFiltroDataInicio(e.target.value)} 
+              />
+            </div>
+            <div className="form-group" style={{marginBottom: 0, flex: 1, minWidth: '200px'}}>
+              <label style={{fontSize: '13px', fontWeight: '600', marginBottom: '5px', display: 'block'}}>Data Fim</label>
+              <input 
+                type="date" 
+                className="form-control" 
+                value={filtroDataFim} 
+                onChange={(e) => setFiltroDataFim(e.target.value)} 
+              />
+            </div>
           </div>
           <div style={{display: 'flex', gap: '10px'}}>
             <button 
