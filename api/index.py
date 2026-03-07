@@ -361,6 +361,45 @@ def deletar_usuario(user_id):
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+# ==================== VARIÁVEIS (Turnos, Formatos, Cores) ====================
+
+@app.route('/api/variaveis', methods=['GET'])
+def listar_variaveis():
+    try:
+        response = supabase.table("variaveis").select("*").order("tipo").order("nome").execute()
+        return jsonify(response.data)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/variaveis', methods=['POST'])
+def criar_variavel():
+    try:
+        data = request.get_json()
+        
+        # Verificar se já existe
+        existing = supabase.table("variaveis").select("*").eq("tipo", data['tipo']).eq("nome", data['nome']).execute()
+        if existing.data:
+            return jsonify({"error": "Variável já existe"}), 400
+        
+        variavel = {
+            "id": str(uuid.uuid4()),
+            "tipo": data['tipo'],  # 'turno', 'formato', 'cor'
+            "nome": data['nome'],
+            "created_at": datetime.now().isoformat()
+        }
+        supabase.table("variaveis").insert(variavel).execute()
+        return jsonify(variavel), 201
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/variaveis/<variavel_id>', methods=['DELETE'])
+def deletar_variavel(variavel_id):
+    try:
+        supabase.table("variaveis").delete().eq("id", variavel_id).execute()
+        return jsonify({"success": True})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 # Configurar headers para cache no cliente
 @app.after_request
 def add_cache_headers(response):

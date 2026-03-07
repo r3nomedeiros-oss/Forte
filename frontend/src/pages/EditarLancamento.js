@@ -10,10 +10,11 @@ function EditarLancamento() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [carregando, setCarregando] = useState(true);
+  const [variaveis, setVariaveis] = useState({ turnos: [], formatos: [], cores: [] });
   
   const [lancamento, setLancamento] = useState({
     data: '',
-    turno: 'Administrativo',
+    turno: '',
     hora: '',
     orelha_kg: '',
     aparas_kg: '',
@@ -22,16 +23,28 @@ function EditarLancamento() {
   });
 
   useEffect(() => {
-    carregarLancamento();
+    carregarDados();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
-  const carregarLancamento = async () => {
+  const carregarDados = async () => {
     try {
-      const response = await axios.get(`${API_URL}/lancamentos/${id}`);
-      setLancamento(response.data);
+      // Carregar variáveis e lançamento em paralelo
+      const [variaveisRes, lancamentoRes] = await Promise.all([
+        axios.get(`${API_URL}/variaveis`),
+        axios.get(`${API_URL}/lancamentos/${id}`)
+      ]);
+      
+      const data = variaveisRes.data;
+      setVariaveis({
+        turnos: data.filter(v => v.tipo === 'turno'),
+        formatos: data.filter(v => v.tipo === 'formato'),
+        cores: data.filter(v => v.tipo === 'cor')
+      });
+      
+      setLancamento(lancamentoRes.data);
     } catch (error) {
-      console.error('Erro ao carregar lançamento:', error);
+      console.error('Erro ao carregar dados:', error);
       alert('Erro ao carregar lançamento');
       navigate('/lancamentos');
     } finally {
@@ -112,7 +125,10 @@ function EditarLancamento() {
                 onChange={(e) => setLancamento({...lancamento, turno: e.target.value})}
                 required
               >
-                <option value="Administrativo">Administrativo</option>
+                <option value="">Selecione o turno</option>
+                {variaveis.turnos.map((t) => (
+                  <option key={t.id} value={t.nome}>{t.nome}</option>
+                ))}
               </select>
             </div>
 
@@ -194,24 +210,32 @@ function EditarLancamento() {
               
               <div className="form-group">
                 <label>Formato</label>
-                <input
-                  type="text"
+                <select
                   className="form-control"
                   value={item.formato}
                   onChange={(e) => atualizarItem(index, 'formato', e.target.value)}
                   required
-                />
+                >
+                  <option value="">Selecione</option>
+                  {variaveis.formatos.map((f) => (
+                    <option key={f.id} value={f.nome}>{f.nome}</option>
+                  ))}
+                </select>
               </div>
 
               <div className="form-group">
                 <label>Cor</label>
-                <input
-                  type="text"
+                <select
                   className="form-control"
                   value={item.cor}
                   onChange={(e) => atualizarItem(index, 'cor', e.target.value)}
                   required
-                />
+                >
+                  <option value="">Selecione</option>
+                  {variaveis.cores.map((c) => (
+                    <option key={c.id} value={c.nome}>{c.nome}</option>
+                  ))}
+                </select>
               </div>
 
               <div className="form-group">

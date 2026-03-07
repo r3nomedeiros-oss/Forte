@@ -7,8 +7,9 @@ import DetalhesLancamento from './pages/DetalhesLancamento';
 import EditarLancamento from './pages/EditarLancamento';
 import Relatorios from './pages/Relatorios';
 import Usuarios from './pages/Usuarios';
+import Variaveis from './pages/Variaveis';
 import Login from './pages/Login';
-import { Factory, ClipboardList, BarChart3, PlusCircle, Users, LogOut } from 'lucide-react';
+import { Factory, ClipboardList, BarChart3, PlusCircle, Users, LogOut, Settings } from 'lucide-react';
 import './App.css';
 
 function ProtectedRoute({ children }) {
@@ -66,6 +67,11 @@ function Navigation({ user, onLogout }) {
           <Link to="/usuarios" className={`nav-item ${isActive('/usuarios')}`}>
             <Users size={20} />
             {isSidebarOpen && <span>Usuários</span>}
+          </Link>
+          
+          <Link to="/variaveis" className={`nav-item ${isActive('/variaveis')}`}>
+            <Settings size={20} />
+            {isSidebarOpen && <span>Variáveis</span>}
           </Link>
           
           <button onClick={onLogout} className="nav-item" style={{background: 'none', border: 'none', color: 'white', cursor: 'pointer', textAlign: 'left', width: '100%'}}>
@@ -156,6 +162,7 @@ function AppContent() {
           <Route path="/lancamentos/:id/editar" element={<ProtectedRoute><EditarLancamento /></ProtectedRoute>} />
           <Route path="/relatorios" element={<ProtectedRoute><Relatorios /></ProtectedRoute>} />
           <Route path="/usuarios" element={<ProtectedRoute><Usuarios /></ProtectedRoute>} />
+          <Route path="/variaveis" element={<ProtectedRoute><Variaveis /></ProtectedRoute>} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </div>

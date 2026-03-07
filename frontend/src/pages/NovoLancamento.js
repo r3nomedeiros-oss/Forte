@@ -8,10 +8,11 @@ const API_URL = (process.env.REACT_APP_BACKEND_URL || '') + '/api';
 function NovoLancamento() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
+  const [variaveis, setVariaveis] = useState({ turnos: [], formatos: [], cores: [] });
   
   const [lancamento, setLancamento] = useState({
     data: new Date().toISOString().split('T')[0],
-    turno: 'Administrativo',
+    turno: '',
     hora: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
     orelha_kg: '',
     aparas_kg: '',
@@ -20,6 +21,24 @@ function NovoLancamento() {
       { formato: '', cor: '', pacote_kg: '', producao_kg: '' }
     ]
   });
+
+  // Carregar variáveis do sistema
+  useEffect(() => {
+    const carregarVariaveis = async () => {
+      try {
+        const response = await axios.get(`${API_URL}/variaveis`);
+        const data = response.data;
+        setVariaveis({
+          turnos: data.filter(v => v.tipo === 'turno'),
+          formatos: data.filter(v => v.tipo === 'formato'),
+          cores: data.filter(v => v.tipo === 'cor')
+        });
+      } catch (error) {
+        console.error('Erro ao carregar variáveis:', error);
+      }
+    };
+    carregarVariaveis();
+  }, []);
 
   // Atualizar hora automaticamente a cada minuto (sem segundos)
   useEffect(() => {
@@ -97,7 +116,10 @@ function NovoLancamento() {
                 onChange={(e) => setLancamento({...lancamento, turno: e.target.value})}
                 required
               >
-                <option value="Administrativo">Administrativo</option>
+                <option value="">Selecione o turno</option>
+                {variaveis.turnos.map((t) => (
+                  <option key={t.id} value={t.nome}>{t.nome}</option>
+                ))}
               </select>
             </div>
           </div>
@@ -159,28 +181,34 @@ function NovoLancamento() {
             <div key={index} style={{display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr 36px', gap: '10px', alignItems: 'end', background: '#f8fafc', padding: '12px', borderRadius: '8px', marginBottom: '10px', border: '1px solid #e2e8f0'}}>
               <div className="form-group" style={{marginBottom: '0'}}>
                 <label style={{fontSize: '12px', marginBottom: '4px'}}>Formato</label>
-                <input
-                  type="text"
+                <select
                   className="form-control"
                   value={item.formato}
                   onChange={(e) => atualizarItem(index, 'formato', e.target.value)}
                   required
-                  placeholder="Ex: 30x40"
                   style={{fontSize: '12px', padding: '8px'}}
-                />
+                >
+                  <option value="">Selecione</option>
+                  {variaveis.formatos.map((f) => (
+                    <option key={f.id} value={f.nome}>{f.nome}</option>
+                  ))}
+                </select>
               </div>
 
               <div className="form-group" style={{marginBottom: '0'}}>
                 <label style={{fontSize: '12px', marginBottom: '4px'}}>Cor</label>
-                <input
-                  type="text"
+                <select
                   className="form-control"
                   value={item.cor}
                   onChange={(e) => atualizarItem(index, 'cor', e.target.value)}
                   required
-                  placeholder="Ex: Azul"
                   style={{fontSize: '12px', padding: '8px'}}
-                />
+                >
+                  <option value="">Selecione</option>
+                  {variaveis.cores.map((c) => (
+                    <option key={c.id} value={c.nome}>{c.nome}</option>
+                  ))}
+                </select>
               </div>
 
               <div className="form-group" style={{marginBottom: '0'}}>
