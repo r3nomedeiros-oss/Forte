@@ -295,8 +295,12 @@ async def listar_lancamentos(data_inicio: Optional[str] = None, data_fim: Option
             query = query.gte("data", data_inicio)
         if data_fim:
             query = query.lte("data", data_fim)
+        
+        # Trim e busca case-insensitive
         if referencia_producao:
-            query = query.ilike("referencia_producao", f"%{referencia_producao}%")
+            ref_trimmed = referencia_producao.strip()
+            if ref_trimmed:
+                query = query.ilike("referencia_producao", f"%{ref_trimmed}%")
             
         response = query.order("data", desc=True).order("hora", desc=True).execute()
         lancamentos = response.data
@@ -414,8 +418,12 @@ async def gerar_relatorio(
         query = supabase.table("lancamentos").select("*")
         if data_inicio and data_fim:
             query = query.gte("data", data_inicio).lte("data", data_fim)
+        
+        # Trim e busca case-insensitive
         if referencia_producao:
-            query = query.ilike("referencia_producao", f"%{referencia_producao}%")
+            ref_trimmed = referencia_producao.strip()
+            if ref_trimmed:
+                query = query.ilike("referencia_producao", f"%{ref_trimmed}%")
         
         response = query.execute()
         lancamentos = response.data

@@ -28,8 +28,12 @@ function Lancamentos() {
       
       if (filtroDataInicio) url += `&data_inicio=${filtroDataInicio}`;
       if (filtroDataFim) url += `&data_fim=${filtroDataFim}`;
-      if (filtroReferencia) url += `&referencia_producao=${encodeURIComponent(filtroReferencia)}`;
+      
+      // Trim para remover espaços extras e enviar o filtro
+      const refTrimmed = filtroReferencia.trim();
+      if (refTrimmed) url += `&referencia_producao=${encodeURIComponent(refTrimmed)}`;
 
+      console.log('Buscando lançamentos com URL:', url); // Debug
       const response = await axios.get(url);
       setLancamentos(response.data);
     } catch (error) {

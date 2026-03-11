@@ -38,8 +38,10 @@ function Relatorios() {
         url += `&data_inicio=${dataInicio}&data_fim=${dataFim}`;
       }
 
-      if (referenciaProducao) {
-        url += `&referencia_producao=${referenciaProducao}`;
+      // Trim para remover espaços extras
+      const refTrimmed = referenciaProducao.trim();
+      if (refTrimmed) {
+        url += `&referencia_producao=${encodeURIComponent(refTrimmed)}`;
       }
       
       // Adiciona timestamp para evitar cache
