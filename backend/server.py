@@ -229,6 +229,277 @@ async def atualizar_ordem_variaveis(data: dict):
         logger.error(f"Error updating variables order: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+# ==================== LANCAMENTOS ENDPOINTS ====================
+
+class ItemLancamento(BaseModel):
+    formato: str
+    cor: str
+    pacote_kg: float = 0
+    producao_kg: float = 0
+
+class LancamentoCreate(BaseModel):
+    data: str
+    turno: str
+    hora: str
+    orelha_kg: float = 0
+    aparas_kg: float = 0
+    referencia_producao: Optional[str] = ""
+    referencia_lote: Optional[str] = ""
+    itens: List[ItemLancamento] = []
+
+@api_router.post("/lancamentos")
+async def criar_lancamento(lancamento: LancamentoCreate):
+    """Create a new production entry"""
+    try:
+        lancamento_id = str(uuid.uuid4())
+        
+        itens_list = [
+            {
+                "formato": item.formato,
+                "cor": item.cor,
+                "pacote_kg": item.pacote_kg,
+                "producao_kg": item.producao_kg
+            } for item in lancamento.itens
+        ]
+        
+        producao_total = sum(item.producao_kg for item in lancamento.itens)
+        perdas_total = lancamento.orelha_kg + lancamento.aparas_kg
+        
+        lancamento_doc = {
+            "id": lancamento_id,
+            "data": lancamento.data,
+            "turno": lancamento.turno,
+            "hora": lancamento.hora,
+            "orelha_kg": lancamento.orelha_kg,
+            "aparas_kg": lancamento.aparas_kg,
+            "referencia_producao": lancamento.referencia_producao,
+            "referencia_lote": lancamento.referencia_lote,
+            "itens": itens_list,
+            "producao_total": producao_total,
+            "perdas_total": perdas_total
+        }
+        
+        supabase.table("lancamentos").insert(lancamento_doc).execute()
+        return {"success": True, "id": lancamento_id}
+    except Exception as e:
+        logger.error(f"Error creating lancamento: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.get("/lancamentos")
+async def listar_lancamentos(data_inicio: Optional[str] = None, data_fim: Optional[str] = None):
+    """List all production entries"""
+    try:
+        query = supabase.table("lancamentos").select("*")
+        
+        if data_inicio:
+            query = query.gte("data", data_inicio)
+        if data_fim:
+            query = query.lte("data", data_fim)
+            
+        response = query.order("data", desc=True).order("hora", desc=True).execute()
+        lancamentos = response.data
+        
+        if not lancamentos:
+            return []
+        
+        result = []
+        for lanc in lancamentos:
+            producao_total = float(lanc.get('producao_total') or 0)
+            perdas_total = float(lanc.get('perdas_total') or 0)
+            percentual_perdas = (perdas_total / producao_total * 100) if producao_total > 0 else 0
+            
+            result.append({
+                **lanc,
+                'percentual_perdas': round(percentual_perdas, 2)
+            })
+        
+        return result
+    except Exception as e:
+        logger.error(f"Error listing lancamentos: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.get("/lancamentos/{lancamento_id}")
+async def obter_lancamento(lancamento_id: str):
+    """Get a specific production entry"""
+    try:
+        response = supabase.table("lancamentos").select("*").eq("id", lancamento_id).execute()
+        if not response.data:
+            raise HTTPException(status_code=404, detail="Lançamento não encontrado")
+        return response.data[0]
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting lancamento: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.put("/lancamentos/{lancamento_id}")
+async def atualizar_lancamento(lancamento_id: str, lancamento: LancamentoCreate):
+    """Update a production entry"""
+    try:
+        itens_list = [
+            {
+                "formato": item.formato,
+                "cor": item.cor,
+                "pacote_kg": item.pacote_kg,
+                "producao_kg": item.producao_kg
+            } for item in lancamento.itens
+        ]
+        
+        producao_total = sum(item.producao_kg for item in lancamento.itens)
+        perdas_total = lancamento.orelha_kg + lancamento.aparas_kg
+        
+        lancamento_update = {
+            "data": lancamento.data,
+            "turno": lancamento.turno,
+            "hora": lancamento.hora,
+            "orelha_kg": lancamento.orelha_kg,
+            "aparas_kg": lancamento.aparas_kg,
+            "referencia_producao": lancamento.referencia_producao,
+            "referencia_lote": lancamento.referencia_lote,
+            "itens": itens_list,
+            "producao_total": producao_total,
+            "perdas_total": perdas_total
+        }
+        
+        supabase.table("lancamentos").update(lancamento_update).eq("id", lancamento_id).execute()
+        return {"success": True}
+    except Exception as e:
+        logger.error(f"Error updating lancamento: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.delete("/lancamentos/{lancamento_id}")
+async def deletar_lancamento(lancamento_id: str):
+    """Delete a production entry"""
+    try:
+        supabase.table("lancamentos").delete().eq("id", lancamento_id).execute()
+        return {"success": True}
+    except Exception as e:
+        logger.error(f"Error deleting lancamento: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+# ==================== RELATORIOS ENDPOINTS ====================
+
+@api_router.get("/relatorios")
+async def gerar_relatorio(
+    periodo: str = "mensal",
+    data_inicio: Optional[str] = None,
+    data_fim: Optional[str] = None,
+    referencia_producao: Optional[str] = None
+):
+    """Generate production report"""
+    try:
+        from datetime import timedelta
+        hoje = datetime.now(timezone.utc).date()
+        
+        # Calculate date range based on period
+        if not data_inicio or not data_fim:
+            if periodo == 'semanal':
+                dias_desde_domingo = (hoje.weekday() + 1) % 7
+                data_inicio = (hoje - timedelta(days=dias_desde_domingo)).isoformat()
+                data_fim = (hoje + timedelta(days=(6 - dias_desde_domingo))).isoformat()
+            elif periodo == 'mensal':
+                data_inicio = hoje.replace(day=1).isoformat()
+                if hoje.month == 12:
+                    data_fim = hoje.replace(day=31).isoformat()
+                else:
+                    proximo_mes = hoje.replace(month=hoje.month + 1, day=1)
+                    data_fim = (proximo_mes - timedelta(days=1)).isoformat()
+            elif periodo == 'anual':
+                data_inicio = hoje.replace(month=1, day=1).isoformat()
+                data_fim = hoje.replace(month=12, day=31).isoformat()
+        
+        # Query lancamentos
+        query = supabase.table("lancamentos").select("*")
+        if data_inicio and data_fim:
+            query = query.gte("data", data_inicio).lte("data", data_fim)
+        if referencia_producao:
+            query = query.ilike("referencia_producao", f"%{referencia_producao}%")
+        
+        response = query.execute()
+        lancamentos = response.data
+        
+        if not lancamentos:
+            return {
+                "producao_total": 0,
+                "perdas_total": 0,
+                "percentual_perdas": 0,
+                "dias_produzidos": 0,
+                "media_diaria": 0,
+                "data_inicio": data_inicio,
+                "data_fim": data_fim,
+                "por_referencia": {},
+                "por_item": []
+            }
+        
+        producao_total = 0
+        perdas_total = 0
+        dias_unicos = set()
+        stats_ref = {}
+        stats_itens = {}
+        
+        for lanc in lancamentos:
+            prod_lanc = float(lanc.get('producao_total') or 0)
+            perd_lanc = float(lanc.get('perdas_total') or 0)
+            ref = lanc.get('referencia_producao') or 'Sem Referência'
+            
+            producao_total += prod_lanc
+            perdas_total += perd_lanc
+            dias_unicos.add(lanc['data'])
+            
+            # Stats by reference
+            if ref not in stats_ref:
+                stats_ref[ref] = {"prod": 0, "perd": 0, "dias": set()}
+            stats_ref[ref]["prod"] += prod_lanc
+            stats_ref[ref]["perd"] += perd_lanc
+            stats_ref[ref]["dias"].add(lanc['data'])
+            
+            # Stats by item (Format + Color)
+            itens_lanc = lanc.get('itens', [])
+            if isinstance(itens_lanc, list):
+                for item in itens_lanc:
+                    formato = item.get('formato', 'N/A')
+                    cor = item.get('cor', 'N/A')
+                    chave_item = f"{formato} - {cor}"
+                    prod_item = float(item.get('producao_kg') or 0)
+                    
+                    if chave_item not in stats_itens:
+                        stats_itens[chave_item] = {"formato": formato, "cor": cor, "producao": 0}
+                    stats_itens[chave_item]["producao"] += prod_item
+        
+        dias_total = len(dias_unicos)
+        
+        relatorio = {
+            "producao_total": round(producao_total, 2),
+            "perdas_total": round(perdas_total, 2),
+            "percentual_perdas": round((perdas_total / producao_total * 100) if producao_total > 0 else 0, 2),
+            "dias_produzidos": dias_total,
+            "media_diaria": round(producao_total / dias_total if dias_total > 0 else 0, 2),
+            "data_inicio": data_inicio,
+            "data_fim": data_fim,
+            "por_referencia": {
+                ref: {
+                    "producao": round(s["prod"], 2),
+                    "perdas": round(s["perd"], 2),
+                    "dias_produzidos": len(s["dias"]),
+                    "media_diaria": round(s["prod"] / len(s["dias"]) if s["dias"] else 0, 2),
+                    "percentual_perdas": round((s["perd"] / s["prod"] * 100) if s["prod"] > 0 else 0, 2)
+                } for ref, s in stats_ref.items()
+            },
+            "por_item": [
+                {
+                    "item": chave,
+                    "formato": dados["formato"],
+                    "cor": dados["cor"],
+                    "producao": round(dados["producao"], 2)
+                } for chave, dados in sorted(stats_itens.items(), key=lambda x: x[1]['producao'], reverse=True)
+            ]
+        }
+        
+        return relatorio
+    except Exception as e:
+        logger.error(f"Error generating report: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 # Include the router in the main app
 app.include_router(api_router)
 
