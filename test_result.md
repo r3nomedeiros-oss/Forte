@@ -150,6 +150,30 @@ backend:
         agent: "testing"
         comment: "✅ PASSED - Endpoint funcionando corretamente. Remove variáveis do Supabase usando ID, retorna {success: true}."
 
+  - task: "GET /api/relatorios - Gerar relatórios"
+    implemented: false
+    working: false
+    file: "backend/server.py"
+    stuck_count: 1
+    priority: "critical"
+    needs_retesting: true
+    status_history:
+      - working: false
+        agent: "testing"
+        comment: "❌ NOT IMPLEMENTED - Endpoint missing from backend/server.py. Frontend calls this with parameters: periodo (semanal/mensal/anual/customizado), data_inicio, data_fim, referencia_producao. Expected response: {producao_total, perdas_total, percentual_perdas, media_diaria, dias_produzidos, por_item: [{formato, cor, producao}], por_referencia: {...}}. Console shows 404 errors."
+
+  - task: "Endpoints /api/lancamentos - Production records"
+    implemented: false
+    working: false
+    file: "backend/server.py"
+    stuck_count: 1
+    priority: "critical"
+    needs_retesting: true
+    status_history:
+      - working: false
+        agent: "testing"
+        comment: "❌ NOT IMPLEMENTED - Multiple lancamentos endpoints missing. Console logs show 404 errors for /api/lancamentos. Frontend pages (NovoLancamento, EditarLancamento, Lancamentos, Dashboard) depend on these endpoints."
+
 frontend:
   - task: "Página de Variáveis"
     implemented: true
@@ -187,6 +211,18 @@ frontend:
         agent: "main"
         comment: "Campos Turno, Formato e Cor convertidos para selects dinâmicos"
 
+  - task: "Página de Relatórios - Seção Minimizada/Expandida"
+    implemented: true
+    working: false
+    file: "frontend/src/pages/Relatorios.js"
+    stuck_count: 1
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: false
+        agent: "testing"
+        comment: "❌ BLOCKED - Frontend implementation is correct (lines 281-372 in Relatorios.js). Collapsible section 'Produção por Itens (Formato e Cor)' with minimize/expand functionality exists. HOWEVER, cannot test because backend endpoint /api/relatorios returns 404. The section only renders when report data is available (line 269: {relatorio && !loading}). Login works, navigation works, 'Gerar Relatório' button works, but API call fails with 404."
+
 metadata:
   created_by: "main_agent"
   version: "1.0"
@@ -194,8 +230,11 @@ metadata:
   run_ui: false
 
 test_plan:
-  current_focus: []
-  stuck_tasks: []
+  current_focus:
+    - "GET /api/relatorios - Gerar relatórios"
+    - "Endpoints /api/lancamentos - Production records"
+  stuck_tasks:
+    - "Página de Relatórios - Seção Minimizada/Expandida"
   test_all: false
   test_priority: "high_first"
 
@@ -204,3 +243,5 @@ agent_communication:
     message: "Implementei os endpoints de variáveis e as páginas do frontend. Por favor, teste os 3 endpoints de variáveis (GET, POST, DELETE). A tabela 'variaveis' já foi criada pelo usuário no Supabase."
   - agent: "testing"
     message: "✅ BACKEND VARIABLES ENDPOINTS - ALL TESTS PASSED. Todos os 3 endpoints funcionando perfeitamente: GET (listagem), POST (criação com status 201), DELETE (remoção). Validação de duplicata funcionando. Conectividade com Supabase confirmada. Nota: Endpoints foram adicionados ao servidor FastAPI running em production pois implementação original estava em arquivo Flask separado."
+  - agent: "testing"
+    message: "❌ CRITICAL: REPORTS FUNCTIONALITY BLOCKED - Backend endpoint /api/relatorios is MISSING (404). Frontend implementation is correct and working. The collapsible 'Produção por Itens (Formato e Cor)' section exists in frontend code but cannot be tested because it only renders when report data is available. Also found /api/lancamentos endpoint missing (404). Login and navigation working correctly."

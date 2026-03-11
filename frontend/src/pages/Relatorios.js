@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Download, FileText, FileSpreadsheet } from 'lucide-react';
+import { Download, FileText, FileSpreadsheet, ChevronDown, ChevronRight } from 'lucide-react';
 
 const API_URL = (process.env.REACT_APP_BACKEND_URL || '') + '/api';
 
@@ -15,6 +15,7 @@ function Relatorios() {
   const [referenciaProducao, setReferenciaProducao] = useState('');
   const [relatorio, setRelatorio] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [itensExpandido, setItensExpandido] = useState(false);
 
   useEffect(() => {
     if (periodo !== 'customizado') {
@@ -61,6 +62,31 @@ function Relatorios() {
     const periodoTexto = periodo === 'customizado' ? `${dataInicio} a ${dataFim}` : periodo.charAt(0).toUpperCase() + periodo.slice(1);
     const filtroRefTexto = referenciaProducao ? ` - Ref: ${referenciaProducao}` : '';
     
+    // Seção de itens só aparece se estiver expandida
+    const secaoItens = itensExpandido ? `
+  <h2>Produção por Itens (Formato e Cor)</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Formato</th>
+        <th>Cor</th>
+        <th>Total Produzido (kg)</th>
+        <th>% da Produção</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${relatorio.por_item.map(item => `
+        <tr>
+          <td><strong>${item.formato}</strong></td>
+          <td>${item.cor}</td>
+          <td>${formatarKg(item.producao)} kg</td>
+          <td>${(item.producao / relatorio.producao_total * 100).toFixed(1)}%</td>
+        </tr>
+      `).join('')}
+    </tbody>
+  </table>
+  ` : '';
+    
     const conteudo = `
 <!DOCTYPE html>
 <html>
@@ -95,27 +121,7 @@ function Relatorios() {
     <div class="stat-box"><strong>Dias Produzidos</strong><div class="value">${relatorio.dias_produzidos}</div></div>
   </div>
 
-  <h2>Produção por Itens (Formato e Cor)</h2>
-  <table>
-    <thead>
-      <tr>
-        <th>Formato</th>
-        <th>Cor</th>
-        <th>Total Produzido (kg)</th>
-        <th>% da Produção</th>
-      </tr>
-    </thead>
-    <tbody>
-      ${relatorio.por_item.map(item => `
-        <tr>
-          <td><strong>${item.formato}</strong></td>
-          <td>${item.cor}</td>
-          <td>${formatarKg(item.producao)} kg</td>
-          <td>${(item.producao / relatorio.producao_total * 100).toFixed(1)}%</td>
-        </tr>
-      `).join('')}
-    </tbody>
-  </table>
+  ${secaoItens}
   
   <h2>Detalhamento por Referência de Produção</h2>
   <table>
@@ -175,12 +181,18 @@ function Relatorios() {
     csv += `Percentual de Perdas;${relatorio.percentual_perdas}%\n`;
     csv += `Média Diária;${formatarKg(relatorio.media_diaria)} kg\n`;
     csv += `Dias Produzidos;${relatorio.dias_produzidos}\n\n`;
-    csv += `PRODUÇÃO POR ITENS\n`;
-    csv += `Formato;Cor;Total Produzido (kg);% da Produção\n`;
-    relatorio.por_item.forEach(item => {
-      csv += `${item.formato};${item.cor};${formatarKg(item.producao)};${(item.producao / relatorio.producao_total * 100).toFixed(1)}%\n`;
-    });
-    csv += `\nDETALHES POR REFERÊNCIA\n`;
+    
+    // Seção de itens só aparece se estiver expandida
+    if (itensExpandido) {
+      csv += `PRODUÇÃO POR ITENS\n`;
+      csv += `Formato;Cor;Total Produzido (kg);% da Produção\n`;
+      relatorio.por_item.forEach(item => {
+        csv += `${item.formato};${item.cor};${formatarKg(item.producao)};${(item.producao / relatorio.producao_total * 100).toFixed(1)}%\n`;
+      });
+      csv += `\n`;
+    }
+    
+    csv += `DETALHES POR REFERÊNCIA\n`;
     csv += `Referência;Produção (kg);Perdas (kg);% Perdas;Média Diária;Dias Produzidos\n`;
     Object.entries(relatorio.por_referencia).forEach(([ref, dados]) => {
       csv += `${ref};${formatarKg(dados.producao)};${formatarKg(dados.perdas)};${dados.percentual_perdas}%;${formatarKg(dados.media_diaria)};${dados.dias_produzidos}\n`;
@@ -267,60 +279,96 @@ function Relatorios() {
           </div>
 
           <div className="card" style={{marginBottom: '30px', borderLeft: '5px solid #15803d'}}>
-            <h2 style={{marginBottom: '20px', color: '#15803d'}}>Produção por Itens (Formato e Cor)</h2>
-            <div className="table-container">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Formato</th>
-                    <th>Cor</th>
-                    <th>Total Produzido (kg)</th>
-                    <th>% da Produção Total</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {relatorio.por_item && relatorio.por_item.length > 0 ? (
-                    relatorio.por_item.map((item, index) => (
-                      <tr key={index}>
-                        <td style={{fontWeight: '700'}}>{item.formato}</td>
-                        <td>
-                          <span style={{
-                            padding: '2px 8px', 
-                            borderRadius: '12px', 
-                            background: '#edf2f7', 
-                            fontSize: '12px',
-                            fontWeight: '600'
-                          }}>
-                            {item.cor}
-                          </span>
-                        </td>
-                        <td style={{fontWeight: '800', color: '#2d3748'}}>{formatarKg(item.producao)} kg</td>
-                        <td>
-                          <div style={{display: 'flex', alignItems: 'center', gap: '10px'}}>
-                            <div style={{flex: 1, height: '8px', background: '#edf2f7', borderRadius: '4px', overflow: 'hidden'}}>
-                              <div style={{
-                                width: `${(item.producao / relatorio.producao_total * 100).toFixed(1)}%`,
-                                height: '100%',
-                                background: '#15803d'
-                              }}></div>
-                            </div>
-                            <span style={{fontSize: '12px', fontWeight: '600'}}>
-                              {(item.producao / relatorio.producao_total * 100).toFixed(1)}%
+            <div 
+              onClick={() => setItensExpandido(!itensExpandido)}
+              style={{
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'space-between',
+                cursor: 'pointer',
+                userSelect: 'none'
+              }}
+            >
+              <h2 style={{marginBottom: itensExpandido ? '20px' : '0', color: '#15803d', display: 'flex', alignItems: 'center', gap: '10px'}}>
+                {itensExpandido ? <ChevronDown size={24} /> : <ChevronRight size={24} />}
+                Produção por Itens (Formato e Cor)
+                <span style={{
+                  fontSize: '12px', 
+                  fontWeight: 'normal', 
+                  color: '#718096',
+                  marginLeft: '10px'
+                }}>
+                  {relatorio.por_item?.length || 0} itens
+                </span>
+              </h2>
+              <span style={{
+                fontSize: '12px',
+                color: '#15803d',
+                fontWeight: '600',
+                padding: '4px 12px',
+                background: '#f0fdf4',
+                borderRadius: '20px',
+                border: '1px solid #bbf7d0'
+              }}>
+                {itensExpandido ? 'Clique para minimizar' : 'Clique para expandir'}
+              </span>
+            </div>
+            
+            {itensExpandido && (
+              <div className="table-container">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Formato</th>
+                      <th>Cor</th>
+                      <th>Total Produzido (kg)</th>
+                      <th>% da Produção Total</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {relatorio.por_item && relatorio.por_item.length > 0 ? (
+                      relatorio.por_item.map((item, index) => (
+                        <tr key={index}>
+                          <td style={{fontWeight: '700'}}>{item.formato}</td>
+                          <td>
+                            <span style={{
+                              padding: '2px 8px', 
+                              borderRadius: '12px', 
+                              background: '#edf2f7', 
+                              fontSize: '12px',
+                              fontWeight: '600'
+                            }}>
+                              {item.cor}
                             </span>
-                          </div>
+                          </td>
+                          <td style={{fontWeight: '800', color: '#2d3748'}}>{formatarKg(item.producao)} kg</td>
+                          <td>
+                            <div style={{display: 'flex', alignItems: 'center', gap: '10px'}}>
+                              <div style={{flex: 1, height: '8px', background: '#edf2f7', borderRadius: '4px', overflow: 'hidden'}}>
+                                <div style={{
+                                  width: `${(item.producao / relatorio.producao_total * 100).toFixed(1)}%`,
+                                  height: '100%',
+                                  background: '#15803d'
+                                }}></div>
+                              </div>
+                              <span style={{fontSize: '12px', fontWeight: '600'}}>
+                                {(item.producao / relatorio.producao_total * 100).toFixed(1)}%
+                              </span>
+                            </div>
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan="4" style={{textAlign: 'center', padding: '20px', color: '#718096'}}>
+                          Nenhum item produzido no período selecionado.
                         </td>
                       </tr>
-                    ))
-                  ) : (
-                    <tr>
-                      <td colSpan="4" style={{textAlign: 'center', padding: '20px', color: '#718096'}}>
-                        Nenhum item produzido no período selecionado.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
 
           <div className="card">
