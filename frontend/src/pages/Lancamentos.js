@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
-import { Eye, Edit, Trash2, FileText, FileSpreadsheet } from 'lucide-react';
+import { Eye, Edit, Trash2, FileText, FileSpreadsheet, Search } from 'lucide-react';
 
 const API_URL = (process.env.REACT_APP_BACKEND_URL || '') + '/api';
 
@@ -14,6 +14,7 @@ function Lancamentos() {
   const [loading, setLoading] = useState(true);
   const [filtroDataInicio, setFiltroDataInicio] = useState('');
   const [filtroDataFim, setFiltroDataFim] = useState('');
+  const [filtroReferencia, setFiltroReferencia] = useState('');
 
   useEffect(() => {
     carregarLancamentos();
@@ -27,6 +28,7 @@ function Lancamentos() {
       
       if (filtroDataInicio) url += `&data_inicio=${filtroDataInicio}`;
       if (filtroDataFim) url += `&data_fim=${filtroDataFim}`;
+      if (filtroReferencia) url += `&referencia_producao=${encodeURIComponent(filtroReferencia)}`;
 
       const response = await axios.get(url);
       setLancamentos(response.data);
@@ -165,7 +167,7 @@ function Lancamentos() {
       <div className="card" style={{marginBottom: '20px', padding: '15px'}}>
         <div style={{display: 'flex', flexDirection: 'column', gap: '15px'}}>
           <div style={{display: 'flex', gap: '20px', flexWrap: 'wrap'}}>
-            <div className="form-group" style={{marginBottom: 0, flex: 1, minWidth: '200px'}}>
+            <div className="form-group" style={{marginBottom: 0, flex: 1, minWidth: '150px'}}>
               <label style={{fontSize: '13px', fontWeight: '600', marginBottom: '5px', display: 'block'}}>Data Início</label>
               <input 
                 type="date" 
@@ -174,13 +176,27 @@ function Lancamentos() {
                 onChange={(e) => setFiltroDataInicio(e.target.value)} 
               />
             </div>
-            <div className="form-group" style={{marginBottom: 0, flex: 1, minWidth: '200px'}}>
+            <div className="form-group" style={{marginBottom: 0, flex: 1, minWidth: '150px'}}>
               <label style={{fontSize: '13px', fontWeight: '600', marginBottom: '5px', display: 'block'}}>Data Fim</label>
               <input 
                 type="date" 
                 className="form-control" 
                 value={filtroDataFim} 
                 onChange={(e) => setFiltroDataFim(e.target.value)} 
+              />
+            </div>
+            <div className="form-group" style={{marginBottom: 0, flex: 2, minWidth: '200px'}}>
+              <label style={{fontSize: '13px', fontWeight: '600', marginBottom: '5px', display: 'block', color: '#15803d'}}>
+                <Search size={14} style={{display: 'inline', marginRight: '5px'}} />
+                Referência de Produção
+              </label>
+              <input 
+                type="text" 
+                className="form-control" 
+                value={filtroReferencia} 
+                onChange={(e) => setFiltroReferencia(e.target.value)} 
+                placeholder="Ex: Roberto, Forte, Rosemar..."
+                style={{border: '1px solid #15803d'}}
               />
             </div>
           </div>
@@ -190,20 +206,22 @@ function Lancamentos() {
               className="btn btn-primary" 
               style={{padding: '10px 20px'}}
             >
+              <Search size={14} style={{marginRight: '5px'}} />
               Filtrar
             </button>
-            {(filtroDataInicio || filtroDataFim) && (
+            {(filtroDataInicio || filtroDataFim || filtroReferencia) && (
               <button 
                 onClick={() => {
                   setFiltroDataInicio('');
                   setFiltroDataFim('');
+                  setFiltroReferencia('');
                   // Usar setTimeout para garantir que os estados foram limpos antes de carregar
                   setTimeout(carregarLancamentos, 0);
                 }} 
                 className="btn btn-secondary" 
                 style={{padding: '10px 20px'}}
               >
-                Limpar
+                Limpar Filtros
               </button>
             )}
           </div>

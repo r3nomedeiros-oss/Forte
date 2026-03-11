@@ -55,7 +55,7 @@ function Dashboard() {
       const data = new Date();
       data.setDate(hoje.getDate() - i);
       const dataFormatada = data.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
-      dadosPorDia[dataFormatada] = { data: dataFormatada, producao: 0, perdas: 0 };
+      dadosPorDia[dataFormatada] = { data: dataFormatada, producao: 0, perdas: 0, percentualPerdas: 0 };
     }
     
     // Preencher com dados reais dos lançamentos
@@ -64,6 +64,13 @@ function Dashboard() {
       if (dadosPorDia[data]) {
         dadosPorDia[data].producao += parseFloat(lanc.producao_total) || 0;
         dadosPorDia[data].perdas += parseFloat(lanc.perdas_total) || 0;
+      }
+    });
+    
+    // Calcular percentual de perdas para cada dia
+    Object.values(dadosPorDia).forEach(dia => {
+      if (dia.producao > 0) {
+        dia.percentualPerdas = parseFloat(((dia.perdas / dia.producao) * 100).toFixed(1));
       }
     });
     
@@ -80,12 +87,10 @@ function Dashboard() {
   // Tooltip customizado para mostrar Produção primeiro
   const CustomTooltip = ({ active, payload, label }) => {
     if (active && payload && payload.length) {
-      // Ordenar para Produção aparecer primeiro
-      const sortedPayload = [...payload].sort((a, b) => {
-        if (a.dataKey === 'producao') return -1;
-        if (b.dataKey === 'producao') return 1;
-        return 0;
-      });
+      // Encontrar os valores
+      const producao = payload.find(p => p.dataKey === 'producao');
+      const perdas = payload.find(p => p.dataKey === 'perdas');
+      const percentual = payload.find(p => p.dataKey === 'percentualPerdas');
       
       return (
         <div style={{
@@ -96,11 +101,21 @@ function Dashboard() {
           boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
         }}>
           <p style={{ margin: '0 0 8px 0', fontWeight: '600', color: '#1a202c' }}>{label}</p>
-          {sortedPayload.map((entry, index) => (
-            <p key={index} style={{ margin: '4px 0', color: entry.color, fontWeight: '500' }}>
-              {entry.name}: {formatarKg(entry.value)} kg
+          {producao && (
+            <p style={{ margin: '4px 0', color: producao.color, fontWeight: '500' }}>
+              Produção: {formatarKg(producao.value)} kg
             </p>
-          ))}
+          )}
+          {perdas && (
+            <p style={{ margin: '4px 0', color: perdas.color, fontWeight: '500' }}>
+              Perdas: {formatarKg(perdas.value)} kg
+            </p>
+          )}
+          {percentual && (
+            <p style={{ margin: '4px 0', color: percentual.color, fontWeight: '600' }}>
+              % Perdas: {percentual.value}%
+            </p>
+          )}
         </div>
       );
     }
@@ -161,25 +176,62 @@ function Dashboard() {
         
         {lancamentos.length > 0 ? (
           <ResponsiveContainer width="100%" height={300}>
-            <LineChart data={prepararDadosGrafico()}>
+            <LineChart data={prepararDadosGrafico()} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
               <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="data" />
-              <YAxis label={{ value: 'kg', angle: -90, position: 'insideLeft' }} />
+              <XAxis 
+                dataKey="data" 
+                tick={{ fontSize: 11 }}
+                interval={0}
+                angle={-45}
+                textAnchor="end"
+                height={50}
+              />
+              <YAxis 
+                yAxisId="left"
+                tick={{ fontSize: 11 }}
+                label={{ value: 'kg', angle: -90, position: 'insideLeft', fontSize: 11 }} 
+              />
+              <YAxis 
+                yAxisId="right"
+                orientation="right"
+                tick={{ fontSize: 11 }}
+                label={{ value: '%', angle: 90, position: 'insideRight', fontSize: 11 }}
+                domain={[0, 'auto']}
+              />
               <Tooltip content={<CustomTooltip />} />
-              <Legend />
+              <Legend 
+                wrapperStyle={{ fontSize: '12px', paddingTop: '10px' }}
+              />
               <Line 
+                yAxisId="left"
                 type="monotone" 
                 dataKey="producao" 
                 stroke="#15803d" 
                 strokeWidth={2}
-                name="Produção (kg)" 
+                name="Produção (kg)"
+                dot={{ r: 4 }}
+                activeDot={{ r: 6 }}
               />
               <Line 
+                yAxisId="left"
                 type="monotone" 
                 dataKey="perdas" 
                 stroke="#f56565" 
                 strokeWidth={2}
-                name="Perdas (kg)" 
+                name="Perdas (kg)"
+                dot={{ r: 4 }}
+                activeDot={{ r: 6 }}
+              />
+              <Line 
+                yAxisId="right"
+                type="monotone" 
+                dataKey="percentualPerdas" 
+                stroke="#805ad5" 
+                strokeWidth={2}
+                strokeDasharray="5 5"
+                name="% Perdas"
+                dot={{ r: 3 }}
+                activeDot={{ r: 5 }}
               />
             </LineChart>
           </ResponsiveContainer>

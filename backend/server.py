@@ -286,7 +286,7 @@ async def criar_lancamento(lancamento: LancamentoCreate):
         raise HTTPException(status_code=500, detail=str(e))
 
 @api_router.get("/lancamentos")
-async def listar_lancamentos(data_inicio: Optional[str] = None, data_fim: Optional[str] = None):
+async def listar_lancamentos(data_inicio: Optional[str] = None, data_fim: Optional[str] = None, referencia_producao: Optional[str] = None):
     """List all production entries"""
     try:
         query = supabase.table("lancamentos").select("*")
@@ -295,6 +295,8 @@ async def listar_lancamentos(data_inicio: Optional[str] = None, data_fim: Option
             query = query.gte("data", data_inicio)
         if data_fim:
             query = query.lte("data", data_fim)
+        if referencia_producao:
+            query = query.ilike("referencia_producao", f"%{referencia_producao}%")
             
         response = query.order("data", desc=True).order("hora", desc=True).execute()
         lancamentos = response.data
