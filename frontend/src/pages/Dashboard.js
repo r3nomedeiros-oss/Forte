@@ -172,66 +172,91 @@ function Dashboard() {
       </div>
 
       <div className="card">
-        <h2 style={{marginBottom: '20px'}}>Produção x Perdas (Últimos 7 Dias)</h2>
+        <h2 style={{marginBottom: '20px', fontWeight: 'bold', fontStyle: 'italic'}}>Produção x Perdas (Últimos 7 Dias)</h2>
         
         {lancamentos.length > 0 ? (
-          <ResponsiveContainer width="100%" height={300}>
-            <LineChart data={prepararDadosGrafico()} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
-              <CartesianGrid strokeDasharray="3 3" />
+          <ResponsiveContainer width="100%" height={350}>
+            <LineChart data={prepararDadosGrafico()} margin={{ top: 10, right: 30, left: 10, bottom: 30 }}>
+              <CartesianGrid 
+                strokeDasharray="4 4" 
+                stroke="#ccc"
+                horizontal={false}
+                vertical={true}
+              />
               <XAxis 
                 dataKey="data" 
-                tick={{ fontSize: 11 }}
+                tick={{ fontSize: 12, fill: '#333' }}
                 interval={0}
-                angle={-45}
-                textAnchor="end"
-                height={50}
+                tickLine={false}
+                axisLine={{ stroke: '#ccc' }}
+                dy={10}
               />
               <YAxis 
                 yAxisId="left"
-                tick={{ fontSize: 11 }}
-                label={{ value: 'kg', angle: -90, position: 'insideLeft', fontSize: 11 }} 
+                tick={{ fontSize: 12, fill: '#333' }}
+                tickLine={false}
+                axisLine={{ stroke: '#ccc' }}
+                label={{ 
+                  value: 'kg', 
+                  angle: -90, 
+                  position: 'insideLeft', 
+                  fontSize: 14,
+                  fill: '#333',
+                  dx: -5
+                }} 
               />
               <YAxis 
                 yAxisId="right"
                 orientation="right"
-                tick={{ fontSize: 11 }}
-                label={{ value: '%', angle: 90, position: 'insideRight', fontSize: 11 }}
-                domain={[0, 'auto']}
+                tick={{ fontSize: 12, fill: '#333' }}
+                tickLine={false}
+                axisLine={{ stroke: '#ccc' }}
+                label={{ 
+                  value: '%', 
+                  angle: 90, 
+                  position: 'insideRight', 
+                  fontSize: 14,
+                  fill: '#333',
+                  dx: 5
+                }}
+                domain={[0, 100]}
               />
               <Tooltip content={<CustomTooltip />} />
               <Legend 
-                wrapperStyle={{ fontSize: '12px', paddingTop: '10px' }}
-              />
-              <Line 
-                yAxisId="left"
-                type="monotone" 
-                dataKey="producao" 
-                stroke="#15803d" 
-                strokeWidth={2}
-                name="Produção (kg)"
-                dot={{ r: 4 }}
-                activeDot={{ r: 6 }}
-              />
-              <Line 
-                yAxisId="left"
-                type="monotone" 
-                dataKey="perdas" 
-                stroke="#f56565" 
-                strokeWidth={2}
-                name="Perdas (kg)"
-                dot={{ r: 4 }}
-                activeDot={{ r: 6 }}
+                wrapperStyle={{ fontSize: '13px', paddingTop: '20px' }}
+                iconType="diamond"
+                formatter={(value) => <span style={{ color: '#333', marginLeft: '4px' }}>{value}</span>}
               />
               <Line 
                 yAxisId="right"
-                type="monotone" 
+                type="natural" 
                 dataKey="percentualPerdas" 
                 stroke="#805ad5" 
                 strokeWidth={2}
-                strokeDasharray="5 5"
+                strokeDasharray="6 4"
                 name="% Perdas"
-                dot={{ r: 3 }}
-                activeDot={{ r: 5 }}
+                dot={{ r: 5, fill: '#805ad5', stroke: '#805ad5', strokeWidth: 2 }}
+                activeDot={{ r: 7, fill: '#805ad5' }}
+              />
+              <Line 
+                yAxisId="left"
+                type="natural" 
+                dataKey="perdas" 
+                stroke="#f56565" 
+                strokeWidth={3}
+                name="Perdas (kg)"
+                dot={{ r: 5, fill: '#f56565', stroke: '#f56565', strokeWidth: 2 }}
+                activeDot={{ r: 7, fill: '#f56565' }}
+              />
+              <Line 
+                yAxisId="left"
+                type="natural" 
+                dataKey="producao" 
+                stroke="#15803d" 
+                strokeWidth={3}
+                name="Produção (kg)"
+                dot={{ r: 5, fill: '#15803d', stroke: '#15803d', strokeWidth: 2 }}
+                activeDot={{ r: 7, fill: '#15803d' }}
               />
             </LineChart>
           </ResponsiveContainer>
