@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import axios from 'axios';
+import { useDados } from '../contexts/DadosContext';
 import { Eye, Edit, Trash2, FileText, FileSpreadsheet, Search } from 'lucide-react';
+import axios from 'axios';
 
 const API_URL = (process.env.REACT_APP_BACKEND_URL || '') + '/api';
 
@@ -10,6 +11,7 @@ const formatarKg = (valor) => {
 };
 
 function Lancamentos() {
+  const { carregarLancamentos, invalidarCache, loadingLancamentos } = useDados();
   const [lancamentos, setLancamentos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filtroDataInicio, setFiltroDataInicio] = useState('');
@@ -17,46 +19,33 @@ function Lancamentos() {
   const [filtroReferencia, setFiltroReferencia] = useState('');
 
   useEffect(() => {
-    carregarLancamentos();
+    carregarDados();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const carregarLancamentos = async (dataInicioParam, dataFimParam, referenciaParam) => {
+  const carregarDados = async (filtros = {}) => {
+    setLoading(true);
     try {
-      // Usa parâmetros se fornecidos, senão usa os estados
-      const dataInicio = dataInicioParam !== undefined ? dataInicioParam : filtroDataInicio;
-      const dataFim = dataFimParam !== undefined ? dataFimParam : filtroDataFim;
-      const referencia = referenciaParam !== undefined ? referenciaParam : filtroReferencia;
-      
-      // Adiciona timestamp para evitar cache do navegador
-      let url = `${API_URL}/lancamentos?t=${new Date().getTime()}`;
-      
-      if (dataInicio) url += `&data_inicio=${dataInicio}`;
-      if (dataFim) url += `&data_fim=${dataFim}`;
-      
-      // Trim para remover espaços extras e enviar o filtro
-      const refTrimmed = referencia.trim();
-      if (refTrimmed) url += `&referencia_producao=${encodeURIComponent(refTrimmed)}`;
-
-      console.log('Buscando lançamentos com URL:', url); // Debug
-      const response = await axios.get(url);
-      setLancamentos(response.data);
-    } catch (error) {
-      console.error('Erro ao carregar lançamentos:', error);
+      const data = await carregarLancamentos(false, {
+        dataInicio: filtros.dataInicio ?? filtroDataInicio,
+        dataFim: filtros.dataFim ?? filtroDataFim,
+        referencia: filtros.referencia ?? filtroReferencia
+      });
+      setLancamentos(data);
     } finally {
       setLoading(false);
     }
   };
   
   const handleFiltrar = () => {
-    carregarLancamentos(filtroDataInicio, filtroDataFim, filtroReferencia);
+    carregarDados({ dataInicio: filtroDataInicio, dataFim: filtroDataFim, referencia: filtroReferencia });
   };
   
   const handleLimparFiltros = () => {
     setFiltroDataInicio('');
     setFiltroDataFim('');
     setFiltroReferencia('');
-    carregarLancamentos('', '', '');
+    carregarDados({ dataInicio: '', dataFim: '', referencia: '' });
   };
 
   const deletarLancamento = async (id) => {
@@ -66,8 +55,9 @@ function Lancamentos() {
 
     try {
       await axios.delete(`${API_URL}/lancamentos/${id}`);
+      invalidarCache(); // Invalida o cache após deletar
       alert('Lançamento excluído com sucesso!');
-      carregarLancamentos();
+      carregarDados();
     } catch (error) {
       console.error('Erro ao excluir lançamento:', error);
       alert('Erro ao excluir lançamento');

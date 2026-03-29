@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useVariaveis } from '../contexts/VariaveisContext';
+import { useDados } from '../contexts/DadosContext';
 import { Plus, Trash2, Save, ArrowLeft, Eye } from 'lucide-react';
 
 // Função para formatar data
@@ -25,6 +26,7 @@ function EditarLancamento() {
   const [loading, setLoading] = useState(false);
   const [carregando, setCarregando] = useState(true);
   const { variaveis } = useVariaveis();
+  const { invalidarCache } = useDados();
   
   const [lancamento, setLancamento] = useState({
     data: '',
@@ -78,6 +80,7 @@ function EditarLancamento() {
     
     try {
       await axios.put(`${API_URL}/lancamentos/${id}`, lancamento);
+      invalidarCache(); // Invalida o cache após atualizar
       alert('Lançamento atualizado com sucesso!');
       navigate('/lancamentos');
     } catch (error) {

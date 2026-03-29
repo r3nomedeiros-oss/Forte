@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, useLocation, Navigate } from 'react-router-dom';
 import { VariaveisProvider } from './contexts/VariaveisContext';
+import { DadosProvider } from './contexts/DadosContext';
 import Dashboard from './pages/Dashboard';
 import NovoLancamento from './pages/NovoLancamento';
 import Lancamentos from './pages/Lancamentos';
@@ -185,7 +186,9 @@ function App() {
   return (
     <Router>
       <VariaveisProvider>
-        <AppContent />
+        <DadosProvider>
+          <AppContent />
+        </DadosProvider>
       </VariaveisProvider>
     </Router>
   );

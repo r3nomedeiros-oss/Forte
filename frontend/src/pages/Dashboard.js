@@ -1,9 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import { useDados } from '../contexts/DadosContext';
 import { TrendingUp, AlertCircle, Calendar, Package } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-
-const API_URL = (process.env.REACT_APP_BACKEND_URL || '') + '/api';
 
 // Função para formatar números
 const formatarKg = (valor) => {
@@ -11,33 +9,33 @@ const formatarKg = (valor) => {
 };
 
 function Dashboard() {
-  const [stats, setStats] = useState(null);
-  const [lancamentos, setLancamentos] = useState([]);
+  const { statsMensal, carregarStatsMensal, carregarLancamentos, loadingStats, loadingLancamentos } = useDados();
+  const [lancamentos7Dias, setLancamentos7Dias] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     carregarDashboard();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const carregarDashboard = async () => {
     try {
-      const [statsResponse, lancamentosResponse] = await Promise.all([
-        axios.get(`${API_URL}/relatorios?periodo=mensal`),
-        axios.get(`${API_URL}/lancamentos`)
+      const [stats, lancamentosData] = await Promise.all([
+        carregarStatsMensal(),
+        carregarLancamentos()
       ]);
-      setStats(statsResponse.data);
       
       // Últimos 7 dias (incluindo hoje)
       const hoje = new Date();
       const seteDiasAtras = new Date();
-      seteDiasAtras.setDate(hoje.getDate() - 6); // -6 para incluir 7 dias (hoje + 6 anteriores)
+      seteDiasAtras.setDate(hoje.getDate() - 6);
       
-      const ultimos7Dias = lancamentosResponse.data.filter(lanc => {
-        const dataLanc = new Date(lanc.data + 'T00:00:00'); // Adicionar hora para evitar problemas de timezone
+      const ultimos7Dias = lancamentosData.filter(lanc => {
+        const dataLanc = new Date(lanc.data + 'T00:00:00');
         return dataLanc >= seteDiasAtras && dataLanc <= hoje;
       });
       
-      setLancamentos(ultimos7Dias);
+      setLancamentos7Dias(ultimos7Dias);
     } catch (error) {
       console.error('Erro ao carregar dashboard:', error);
     } finally {
@@ -59,7 +57,7 @@ function Dashboard() {
     }
     
     // Preencher com dados reais dos lançamentos
-    lancamentos.forEach(lanc => {
+    lancamentos7Dias.forEach(lanc => {
       const data = new Date(lanc.data + 'T00:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
       if (dadosPorDia[data]) {
         dadosPorDia[data].producao += parseFloat(lanc.producao_total) || 0;
@@ -136,16 +134,16 @@ function Dashboard() {
       <div className="stats-grid">
         <div className="stat-card">
           <h3>Produção Total</h3>
-          <div className="value">{formatarKg(stats?.producao_total || 0)} kg</div>
+          <div className="value">{formatarKg(statsMensal?.producao_total || 0)} kg</div>
           <div className="subtitle" style={{fontSize: '15px', fontWeight: '600', color: '#4a5568'}}>
             <Package size={16} style={{display: 'inline', marginRight: '5px'}} />
-            {stats?.dias_produzidos || 0} dias produzidos
+            {statsMensal?.dias_produzidos || 0} dias produzidos
           </div>
         </div>
 
         <div className="stat-card">
           <h3>Média Diária</h3>
-          <div className="value">{formatarKg(stats?.media_diaria || 0)} kg</div>
+          <div className="value">{formatarKg(statsMensal?.media_diaria || 0)} kg</div>
           <div className="subtitle" style={{fontSize: '15px', fontWeight: '600', color: '#4a5568'}}>
             <TrendingUp size={16} style={{display: 'inline', marginRight: '5px'}} />
             Por dia produzido
@@ -154,10 +152,10 @@ function Dashboard() {
 
         <div className="stat-card">
           <h3>Perdas Totais</h3>
-          <div className="value">{formatarKg(stats?.perdas_total || 0)} kg</div>
+          <div className="value">{formatarKg(statsMensal?.perdas_total || 0)} kg</div>
           <div className="subtitle" style={{fontSize: '15px', fontWeight: '600', color: '#4a5568'}}>
             <AlertCircle size={16} style={{display: 'inline', marginRight: '5px'}} />
-            {stats?.percentual_perdas || 0}% da produção
+            {statsMensal?.percentual_perdas || 0}% da produção
           </div>
         </div>
 
@@ -174,7 +172,7 @@ function Dashboard() {
       <div className="card">
         <h2 style={{marginBottom: '20px', fontWeight: 'bold', fontStyle: 'italic'}}>Produção x Perdas (Últimos 7 Dias)</h2>
         
-        {lancamentos.length > 0 ? (
+        {lancamentos7Dias.length > 0 ? (
           <ResponsiveContainer width="100%" height={350}>
             <LineChart data={prepararDadosGrafico()} margin={{ top: 10, right: 30, left: 10, bottom: 30 }}>
               <CartesianGrid 
