@@ -196,6 +196,7 @@ function Dashboard() {
                 tick={{ fontSize: 12, fill: '#333' }}
                 tickLine={false}
                 axisLine={{ stroke: '#ccc' }}
+                domain={[0, 'auto']}
                 label={{ 
                   value: 'kg', 
                   angle: -90, 
@@ -229,7 +230,7 @@ function Dashboard() {
               />
               <Line 
                 yAxisId="right"
-                type="natural" 
+                type="monotone" 
                 dataKey="percentualPerdas" 
                 stroke="#805ad5" 
                 strokeWidth={2}
@@ -240,7 +241,7 @@ function Dashboard() {
               />
               <Line 
                 yAxisId="left"
-                type="natural" 
+                type="monotone" 
                 dataKey="perdas" 
                 stroke="#f56565" 
                 strokeWidth={3}
@@ -250,7 +251,7 @@ function Dashboard() {
               />
               <Line 
                 yAxisId="left"
-                type="natural" 
+                type="monotone" 
                 dataKey="producao" 
                 stroke="#15803d" 
                 strokeWidth={3}
