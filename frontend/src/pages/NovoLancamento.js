@@ -22,7 +22,6 @@ function NovoLancamento() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [variaveis, setVariaveis] = useState({ turnos: [], formatos: [], cores: [] });
-  const [mostrarPreview, setMostrarPreview] = useState(false);
   
   const [lancamento, setLancamento] = useState({
     data: new Date().toISOString().split('T')[0],
@@ -265,23 +264,14 @@ function NovoLancamento() {
           ))}
         </div>
 
-        {/* Pré-visualização do Lançamento */}
+        {/* Pré-visualização do Lançamento - Sempre Aberta */}
         <div className="card" style={{background: '#f0fdf4', border: '2px solid #15803d'}}>
-          <div 
-            style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer'}}
-            onClick={() => setMostrarPreview(!mostrarPreview)}
-          >
-            <h2 style={{color: '#15803d', display: 'flex', alignItems: 'center', gap: '10px'}}>
-              <Eye size={20} />
-              Pré-visualização do Lançamento
-            </h2>
-            <span style={{color: '#15803d', fontSize: '14px'}}>
-              {mostrarPreview ? '▲ Ocultar' : '▼ Mostrar'}
-            </span>
-          </div>
+          <h2 style={{color: '#15803d', display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px'}}>
+            <Eye size={20} />
+            Pré-visualização do Lançamento
+          </h2>
           
-          {mostrarPreview && (
-            <div style={{marginTop: '20px'}}>
+          <div>
               {/* Informações Gerais */}
               <div style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '15px', marginBottom: '20px', padding: '15px', background: 'white', borderRadius: '8px'}}>
                 <div>
@@ -367,7 +357,6 @@ function NovoLancamento() {
                 </div>
               </div>
             </div>
-          )}
         </div>
 
         <div style={{display: 'flex', gap: '10px'}}>
