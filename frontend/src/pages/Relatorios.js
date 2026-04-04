@@ -316,7 +316,7 @@ function Relatorios() {
               </h2>
               <span style={{
                 fontSize: '12px',
-                color: '#64748b',
+                color: '#15803d',
                 fontWeight: '600',
                 padding: '4px 12px',
                 background: '#f0fdf4',
