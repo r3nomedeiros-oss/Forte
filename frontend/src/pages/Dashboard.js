@@ -186,14 +186,7 @@ function Dashboard() {
       </div>
 
       <div className="card">
-        <h2 style={{marginBottom: '20px', fontWeight: 'bold', fontStyle: 'italic'}}>
-          Produção x Perdas (Últimos 7 Dias)
-          {dataReferencia && (
-            <span style={{fontSize: '14px', fontWeight: '500', fontStyle: 'normal', color: '#718096', marginLeft: '10px'}}>
-              — até {dataReferencia.toLocaleDateString('pt-BR')}
-            </span>
-          )}
-        </h2>
+        <h2 style={{marginBottom: '20px', fontWeight: 'bold', fontStyle: 'italic'}}>Produção x Perdas (Últimos 7 Dias)</h2>
         
         {lancamentos7Dias.length > 0 ? (
           <ResponsiveContainer width="100%" height={350}>
