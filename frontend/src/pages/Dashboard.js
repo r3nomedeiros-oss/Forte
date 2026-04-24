@@ -11,6 +11,7 @@ const formatarKg = (valor) => {
 function Dashboard() {
   const { statsMensal, carregarStatsMensal, carregarLancamentos, loadingStats, loadingLancamentos } = useDados();
   const [lancamentos7Dias, setLancamentos7Dias] = useState([]);
+  const [dataReferencia, setDataReferencia] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -25,17 +26,28 @@ function Dashboard() {
         carregarLancamentos()
       ]);
       
-      // Últimos 7 dias (incluindo hoje)
-      const hoje = new Date();
-      const seteDiasAtras = new Date();
-      seteDiasAtras.setDate(hoje.getDate() - 6);
+      if (!lancamentosData || lancamentosData.length === 0) {
+        setLancamentos7Dias([]);
+        setDataReferencia(null);
+        return;
+      }
+      
+      // Encontrar a data do lançamento mais recente
+      const dataMaisRecente = lancamentosData
+        .map(l => new Date(l.data + 'T00:00:00'))
+        .reduce((max, d) => (d > max ? d : max), new Date(lancamentosData[0].data + 'T00:00:00'));
+      
+      // 7 dias a partir do último lançamento (incluindo o dia do lançamento)
+      const seteDiasAtras = new Date(dataMaisRecente);
+      seteDiasAtras.setDate(dataMaisRecente.getDate() - 6);
       
       const ultimos7Dias = lancamentosData.filter(lanc => {
         const dataLanc = new Date(lanc.data + 'T00:00:00');
-        return dataLanc >= seteDiasAtras && dataLanc <= hoje;
+        return dataLanc >= seteDiasAtras && dataLanc <= dataMaisRecente;
       });
       
       setLancamentos7Dias(ultimos7Dias);
+      setDataReferencia(dataMaisRecente);
     } catch (error) {
       console.error('Erro ao carregar dashboard:', error);
     } finally {
@@ -44,14 +56,15 @@ function Dashboard() {
   };
 
   const prepararDadosGrafico = () => {
-    // Criar array com os últimos 7 dias
-    const hoje = new Date();
+    if (!dataReferencia) return [];
+    
+    // Criar array com os 7 dias até o último lançamento
     const dadosPorDia = {};
     
-    // Inicializar todos os 7 dias com valores zerados
+    // Inicializar todos os 7 dias com valores zerados (baseados na data do último lançamento)
     for (let i = 6; i >= 0; i--) {
-      const data = new Date();
-      data.setDate(hoje.getDate() - i);
+      const data = new Date(dataReferencia);
+      data.setDate(dataReferencia.getDate() - i);
       const dataFormatada = data.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
       dadosPorDia[dataFormatada] = { data: dataFormatada, producao: 0, perdas: 0, percentualPerdas: 0 };
     }
@@ -173,7 +186,14 @@ function Dashboard() {
       </div>
 
       <div className="card">
-        <h2 style={{marginBottom: '20px', fontWeight: 'bold', fontStyle: 'italic'}}>Produção x Perdas (Últimos 7 Dias)</h2>
+        <h2 style={{marginBottom: '20px', fontWeight: 'bold', fontStyle: 'italic'}}>
+          Produção x Perdas (Últimos 7 Dias)
+          {dataReferencia && (
+            <span style={{fontSize: '14px', fontWeight: '500', fontStyle: 'normal', color: '#718096', marginLeft: '10px'}}>
+              — até {dataReferencia.toLocaleDateString('pt-BR')}
+            </span>
+          )}
+        </h2>
         
         {lancamentos7Dias.length > 0 ? (
           <ResponsiveContainer width="100%" height={350}>
