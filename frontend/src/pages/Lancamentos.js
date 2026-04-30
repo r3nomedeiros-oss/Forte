@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useDados } from '../contexts/DadosContext';
-import { Eye, Edit, Trash2, FileText, FileSpreadsheet, Search } from 'lucide-react';
+import { Eye, Edit, Trash2, FileText, FileSpreadsheet, Search, Layers, List } from 'lucide-react';
 import axios from 'axios';
 
 const API_URL = (process.env.REACT_APP_BACKEND_URL || '') + '/api';
@@ -17,6 +17,7 @@ function Lancamentos() {
   const [filtroDataInicio, setFiltroDataInicio] = useState('');
   const [filtroDataFim, setFiltroDataFim] = useState('');
   const [filtroReferencia, setFiltroReferencia] = useState('');
+  const [modoConsolidado, setModoConsolidado] = useState(false);
 
   useEffect(() => {
     carregarDados();
@@ -74,18 +75,77 @@ function Lancamentos() {
     return hora.substring(0, 5); // Garante que mostre apenas HH:mm
   };
 
+  // Consolida lançamentos por dia (soma produção/perdas de todos os turnos do mesmo dia)
+  const consolidarPorDia = (lancs) => {
+    const porDia = {};
+    lancs.forEach(l => {
+      if (!porDia[l.data]) {
+        porDia[l.data] = {
+          data: l.data,
+          producao_total: 0,
+          perdas_total: 0,
+          turnos: new Set(),
+          referencias: new Set(),
+          quantidade: 0
+        };
+      }
+      porDia[l.data].producao_total += parseFloat(l.producao_total) || 0;
+      porDia[l.data].perdas_total += parseFloat(l.perdas_total) || 0;
+      if (l.turno) porDia[l.data].turnos.add(l.turno);
+      if (l.referencia_producao) porDia[l.data].referencias.add(l.referencia_producao);
+      porDia[l.data].quantidade += 1;
+    });
+
+    return Object.values(porDia)
+      .map(d => ({
+        ...d,
+        turnos: Array.from(d.turnos),
+        referencias: Array.from(d.referencias),
+        percentual_perdas: d.producao_total > 0
+          ? parseFloat(((d.perdas_total / d.producao_total) * 100).toFixed(1))
+          : 0
+      }))
+      .sort((a, b) => new Date(b.data) - new Date(a.data));
+  };
+
+  const dadosConsolidados = modoConsolidado ? consolidarPorDia(lancamentos) : [];
+
   const exportarHistoricoPDF = () => {
     const dataAtual = new Date().toLocaleDateString('pt-BR');
     const periodoTexto = filtroDataInicio && filtroDataFim 
       ? `Período: ${formatarData(filtroDataInicio)} até ${formatarData(filtroDataFim)}`
       : 'Histórico Completo';
       
+    const tituloModo = modoConsolidado ? ' (Consolidado por Dia)' : '';
+
+    const linhasHTML = modoConsolidado
+      ? dadosConsolidados.map(d => `
+                <tr>
+                  <td>${formatarData(d.data)}</td>
+                  <td>${d.referencias.join(', ') || '-'}</td>
+                  <td>${d.turnos.join(', ') || '-'}</td>
+                  <td>${formatarKg(d.producao_total)}</td>
+                  <td>${formatarKg(d.perdas_total)}</td>
+                  <td>${d.percentual_perdas}%</td>
+                </tr>
+              `).join('')
+      : lancamentos.map(lanc => `
+                <tr>
+                  <td>${formatarData(lanc.data)} ${formatarHora(lanc.hora)}</td>
+                  <td>${lanc.referencia_producao || ''}</td>
+                  <td>${lanc.turno}</td>
+                  <td>${formatarKg(lanc.producao_total)}</td>
+                  <td>${formatarKg(lanc.perdas_total)}</td>
+                  <td>${lanc.percentual_perdas}%</td>
+                </tr>
+              `).join('');
+
     const conteudo = `
 <!DOCTYPE html>
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>Histórico de Produção - ${periodoTexto}</title>
+  <title>Histórico de Produção${tituloModo} - ${periodoTexto}</title>
   <style>
     body { font-family: Arial, sans-serif; padding: 20px; color: #2d3748; }
     h1 { color: #15803d; border-bottom: 2px solid #15803d; padding-bottom: 10px; }
@@ -96,13 +156,13 @@ function Lancamentos() {
   </style>
 </head>
 <body>
-  <h1>Histórico de Produção - PolyTrack</h1>
+  <h1>Histórico de Produção${tituloModo} - PolyTrack</h1>
   <p><strong>${periodoTexto}</strong></p>
   <p>Gerado em: ${dataAtual}</p>
   <table>
     <thead>
       <tr>
-	        <th>Data/Hora</th>
+	        <th>${modoConsolidado ? 'Data' : 'Data/Hora'}</th>
 	        <th>Referência</th>
 	        <th>Turno</th>
 	        <th>Produção (kg)</th>
@@ -111,16 +171,7 @@ function Lancamentos() {
       </tr>
     </thead>
     <tbody>
-	      ${lancamentos.map(lanc => `
-	        <tr>
-	          <td>${formatarData(lanc.data)} ${formatarHora(lanc.hora)}</td>
-	          <td>${lanc.referencia_producao || ''}</td>
-	          <td>${lanc.turno}</td>
-	          <td>${formatarKg(lanc.producao_total)}</td>
-          <td>${formatarKg(lanc.perdas_total)}</td>
-          <td>${lanc.percentual_perdas}%</td>
-        </tr>
-      `).join('')}
+      ${linhasHTML}
     </tbody>
   </table>
   <div class="footer">PolyTrack - Sistema de Controle de Produção</div>
@@ -139,15 +190,23 @@ function Lancamentos() {
   };
 
   const exportarHistoricoExcel = () => {
-    let csv = `Data;Hora;Referência de Produção;Turno;Produção (kg);Perdas (kg);% Perdas\n`;
-    lancamentos.forEach(lanc => {
-      csv += `${formatarData(lanc.data)};${formatarHora(lanc.hora)};${lanc.referencia_producao || ''};${lanc.turno};${formatarKg(lanc.producao_total)};${formatarKg(lanc.perdas_total)};${lanc.percentual_perdas}%\n`;
-    });
+    let csv = '';
+    if (modoConsolidado) {
+      csv = `Data;Referências;Turnos;Produção (kg);Perdas (kg);% Perdas\n`;
+      dadosConsolidados.forEach(d => {
+        csv += `${formatarData(d.data)};${d.referencias.join(', ')};${d.turnos.join(', ')};${formatarKg(d.producao_total)};${formatarKg(d.perdas_total)};${d.percentual_perdas}%\n`;
+      });
+    } else {
+      csv = `Data;Hora;Referência de Produção;Turno;Produção (kg);Perdas (kg);% Perdas\n`;
+      lancamentos.forEach(lanc => {
+        csv += `${formatarData(lanc.data)};${formatarHora(lanc.hora)};${lanc.referencia_producao || ''};${lanc.turno};${formatarKg(lanc.producao_total)};${formatarKg(lanc.perdas_total)};${lanc.percentual_perdas}%\n`;
+      });
+    }
     const blob = new Blob(["\ufeff" + csv], { type: 'text/csv;charset=utf-8;' });
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `historico_producao_${new Date().getTime()}.csv`;
+    a.download = `historico_producao${modoConsolidado ? '_consolidado' : ''}_${new Date().getTime()}.csv`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -164,7 +223,23 @@ function Lancamentos() {
           <h1>Lançamentos</h1>
           <p>Histórico de produção</p>
         </div>
-        <div style={{display: 'flex', gap: '10px'}}>
+        <div style={{display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap'}}>
+          <button
+            onClick={() => setModoConsolidado(!modoConsolidado)}
+            className="btn"
+            style={{
+              padding: '8px 15px',
+              fontSize: '13px',
+              background: modoConsolidado ? '#15803d' : '#fff',
+              color: modoConsolidado ? '#fff' : '#15803d',
+              border: '2px solid #15803d',
+              fontWeight: '600'
+            }}
+            title={modoConsolidado ? 'Voltar para visualização por turno' : 'Consolidar por dia (somar turnos)'}
+          >
+            {modoConsolidado ? <List size={14} /> : <Layers size={14} />}
+            {' '}{modoConsolidado ? 'Por Turno' : 'Consolidar por Dia'}
+          </button>
           <button onClick={exportarHistoricoPDF} className="btn btn-danger" style={{padding: '8px 15px', fontSize: '13px'}}>
             <FileText size={14} /> PDF
           </button>
@@ -239,6 +314,90 @@ function Lancamentos() {
           <Link to="/novo-lancamento" className="btn btn-primary" style={{marginTop: '20px'}}>
             Novo Lançamento
           </Link>
+        </div>
+      ) : modoConsolidado ? (
+        <div className="card">
+          <div style={{
+            background: '#f0fdf4',
+            border: '1px solid #bcf0da',
+            color: '#15803d',
+            padding: '10px 15px',
+            borderRadius: '6px',
+            marginBottom: '15px',
+            fontSize: '13px',
+            fontWeight: '500'
+          }}>
+            <Layers size={14} style={{display: 'inline', marginRight: '6px', verticalAlign: 'text-bottom'}} />
+            Modo consolidado: turnos do mesmo dia somados em uma única linha. Os lançamentos originais permanecem inalterados.
+          </div>
+          <div className="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>Data</th>
+                  <th>Referências</th>
+                  <th>Turnos</th>
+                  <th>Produção</th>
+                  <th>Perdas</th>
+                  <th>% Perdas</th>
+                  <th>Lanç.</th>
+                </tr>
+              </thead>
+              <tbody>
+                {dadosConsolidados.map((d) => (
+                  <tr key={d.data}>
+                    <td>
+                      <div style={{fontWeight: '600'}}>
+                        {formatarData(d.data)}
+                      </div>
+                    </td>
+                    <td>
+                      {d.referencias.length > 0 ? (
+                        <div style={{display: 'flex', flexWrap: 'wrap', gap: '4px'}}>
+                          {d.referencias.map((ref, idx) => (
+                            <span key={idx} style={{
+                              fontWeight: '700',
+                              color: '#15803d',
+                              background: '#f0fdf4',
+                              padding: '3px 7px',
+                              borderRadius: '4px',
+                              border: '1px solid #bcf0da',
+                              fontSize: '12px'
+                            }}>
+                              {ref}
+                            </span>
+                          ))}
+                        </div>
+                      ) : (
+                        <span style={{color: '#a0aec0', fontStyle: 'italic', fontSize: '12px'}}>Sem referência</span>
+                      )}
+                    </td>
+                    <td>
+                      <div style={{display: 'flex', flexWrap: 'wrap', gap: '4px'}}>
+                        {d.turnos.map((t, idx) => (
+                          <span key={idx} className="badge badge-success">{t}</span>
+                        ))}
+                      </div>
+                    </td>
+                    <td style={{fontWeight: '600', color: '#48bb78'}}>
+                      {formatarKg(d.producao_total)} kg
+                    </td>
+                    <td style={{fontWeight: '600', color: '#f56565'}}>
+                      {formatarKg(d.perdas_total)} kg
+                    </td>
+                    <td>
+                      <span className={`badge ${d.percentual_perdas > 10 ? 'badge-danger' : 'badge-warning'}`}>
+                        {d.percentual_perdas}%
+                      </span>
+                    </td>
+                    <td style={{textAlign: 'center', fontWeight: '600', color: '#4a5568'}}>
+                      {d.quantidade}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       ) : (
         <div className="card">
